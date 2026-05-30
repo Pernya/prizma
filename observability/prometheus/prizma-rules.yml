@@ -1,0 +1,26 @@
+groups:
+  - name: prizma-slo
+    rules:
+      - alert: PrizmaHighErrorRate
+        expr: sum(rate(prizma_http_requests_total{status=~"5.."}[5m])) / clamp_min(sum(rate(prizma_http_requests_total[5m])), 1) > 0.02
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Prizma backend returns too many 5xx responses"
+
+      - alert: PrizmaHighP95Latency
+        expr: histogram_quantile(0.95, sum by (le) (rate(prizma_http_request_duration_seconds_bucket{path="/api/v1/jobs"}[5m]))) > 3
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Prizma job creation API exceeds latency budget"
+
+      - alert: PrizmaJobsStuck
+        expr: prizma_active_jobs > 10
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Too many active Prizma jobs for too long"

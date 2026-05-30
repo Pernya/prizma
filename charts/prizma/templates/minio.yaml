@@ -1,0 +1,129 @@
+{{- if .Values.minio.enabled -}}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "prizma.minioFullname" . }}-data
+  labels:
+    {{- include "prizma.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    {{- toYaml .Values.minio.persistence.accessModes | nindent 4 }}
+  resources:
+    requests:
+      storage: {{ .Values.minio.persistence.size }}
+  {{- if .Values.minio.persistence.storageClass }}
+  storageClassName: {{ .Values.minio.persistence.storageClass }}
+  {{- end }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "prizma.minioFullname" . }}
+  labels:
+    {{- include "prizma.labels" . | nindent 4 }}
+    {{- include "prizma.componentLabels" (dict "root" . "component" "minio") | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "prizma.componentSelectorLabels" (dict "root" . "component" "minio") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "prizma.componentSelectorLabels" (dict "root" . "component" "minio") | nindent 8 }}
+    spec:
+      containers:
+        - name: minio
+          image: {{ .Values.minio.image | quote }}
+          args:
+            - server
+            - /data
+            - --console-address
+            - :{{ .Values.minio.service.consolePort }}
+          env:
+            - name: MINIO_ROOT_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "prizma.secretName" . }}
+                  key: minio-root-user
+            - name: MINIO_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "prizma.secretName" . }}
+                  key: minio-root-password
+          ports:
+            - name: api
+              containerPort: {{ .Values.minio.service.apiPort }}
+            - name: console
+              containerPort: {{ .Values.minio.service.consolePort }}
+          livenessProbe:
+            httpGet:
+              path: /minio/health/live
+              port: api
+          readinessProbe:
+            httpGet:
+              path: /minio/health/ready
+              port: api
+          resources:
+            {{- toYaml .Values.minio.resources | nindent 12 }}
+          volumeMounts:
+            - name: minio-data
+              mountPath: /data
+      volumes:
+        - name: minio-data
+          persistentVolumeClaim:
+            claimName: {{ include "prizma.minioFullname" . }}-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "prizma.minioFullname" . }}
+  labels:
+    {{- include "prizma.labels" . | nindent 4 }}
+    {{- include "prizma.componentLabels" (dict "root" . "component" "minio") | nindent 4 }}
+spec:
+  selector:
+    {{- include "prizma.componentSelectorLabels" (dict "root" . "component" "minio") | nindent 4 }}
+  ports:
+    - name: api
+      port: {{ .Values.minio.service.apiPort }}
+      targetPort: api
+    - name: console
+      port: {{ .Values.minio.service.consolePort }}
+      targetPort: console
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "prizma.minioFullname" . }}-bootstrap
+  labels:
+    {{- include "prizma.labels" . | nindent 4 }}
+spec:
+  template:
+    metadata:
+      labels:
+        {{- include "prizma.labels" . | nindent 8 }}
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: mc
+          image: quay.io/minio/mc:RELEASE.2025-05-21T01-59-54Z
+          command:
+            - /bin/sh
+            - -c
+            - |
+              mc alias set local http://{{ include "prizma.minioFullname" . }}:{{ .Values.minio.service.apiPort }} "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD"
+              mc mb --ignore-existing local/{{ .Values.minio.bucket }}
+              mc anonymous set download local/{{ .Values.minio.bucket }}
+          env:
+            - name: MINIO_ROOT_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "prizma.secretName" . }}
+                  key: minio-root-user
+            - name: MINIO_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "prizma.secretName" . }}
+                  key: minio-root-password
+{{- end }}

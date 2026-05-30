@@ -1,0 +1,36 @@
+image:
+  tag: dev
+
+app:
+  baseUrl: http://prizma-backend.prizma.svc.cluster.local:8000
+  environment: dev
+  inferenceBackend: local
+
+api:
+  replicaCount: 1
+  autoscaling:
+    enabled: false
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+
+worker:
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+
+sharedState:
+  accessModes:
+    - ReadWriteOnce
+
+triton:
+  enabled: false

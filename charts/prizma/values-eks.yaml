@@ -1,0 +1,85 @@
+image:
+  tag: stable
+
+app:
+  baseUrl: https://prizma.example.com
+  environment: production
+  executionMode: broker
+  storageBackend: s3
+  inferenceBackend: triton
+
+api:
+  replicaCount: 2
+  ingress:
+    enabled: true
+    className: alb
+    annotations:
+      alb.ingress.kubernetes.io/scheme: internet-facing
+      alb.ingress.kubernetes.io/target-type: ip
+      alb.ingress.kubernetes.io/healthcheck-path: /healthz
+      alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
+      alb.ingress.kubernetes.io/backend-protocol: HTTP
+      alb.ingress.kubernetes.io/group.name: prizma
+    hosts:
+      - host: prizma.example.com
+        paths:
+          - path: /
+            pathType: Prefix
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 6
+    targetCPUUtilizationPercentage: 70
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+
+worker:
+  replicaCount: 2
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+
+sharedState:
+  accessModes:
+    - ReadWriteMany
+  storageClass: efs-sc
+  size: 20Gi
+
+minio:
+  persistence:
+    storageClass: gp3
+    size: 100Gi
+
+rabbitmq:
+  persistence:
+    storageClass: gp3
+    size: 20Gi
+
+triton:
+  enabled: true
+  resources:
+    requests:
+      cpu: 500m
+      memory: 2Gi
+    limits:
+      cpu: 2000m
+      memory: 4Gi
+  nodeSelector:
+    kubernetes.io/arch: amd64
+  tolerations: []
+
+serviceAccount:
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::123456789012:role/prizma-platform-irsa
+
+serviceMonitor:
+  enabled: true

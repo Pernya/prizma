@@ -1,0 +1,155 @@
+services:
+  backend:
+    build:
+      context: .
+    environment:
+      PRIZMA_BASE_URL: http://localhost:8000
+      PRIZMA_ENVIRONMENT: dev
+      PRIZMA_EXECUTION_MODE: broker
+      PRIZMA_STORAGE_BACKEND: s3
+      PRIZMA_INFERENCE_BACKEND: ${PRIZMA_INFERENCE_BACKEND:-local}
+      PRIZMA_ARTIFACT_BUCKET: prizma-artifacts
+      PRIZMA_S3_ENDPOINT_URL: http://minio:9000
+      PRIZMA_S3_ACCESS_KEY_ID: minioadmin
+      PRIZMA_S3_SECRET_ACCESS_KEY: minioadmin123
+      PRIZMA_RABBITMQ_URL: amqp://prizma:prizma@rabbitmq:5672/%2f
+      PRIZMA_RABBITMQ_QUEUE: prizma.jobs
+      PRIZMA_JOB_STATE_DIR: /app/state/jobs
+      PRIZMA_LOCAL_ARTIFACT_DIR: /app/state/local-artifacts
+      PRIZMA_TRITON_URL: triton:8000
+      PRIZMA_TRITON_MODEL_NAME: prizma_stylizer
+    ports:
+      - "8000:8000"
+    depends_on:
+      minio-init:
+        condition: service_completed_successfully
+      rabbitmq:
+        condition: service_healthy
+    volumes:
+      - shared-state:/app/state
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz')\""]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  worker:
+    build:
+      context: .
+    command: ["python", "-m", "prizma_backend.worker"]
+    environment:
+      PRIZMA_BASE_URL: http://backend:8000
+      PRIZMA_ENVIRONMENT: dev
+      PRIZMA_EXECUTION_MODE: broker
+      PRIZMA_STORAGE_BACKEND: s3
+      PRIZMA_INFERENCE_BACKEND: ${PRIZMA_INFERENCE_BACKEND:-local}
+      PRIZMA_ARTIFACT_BUCKET: prizma-artifacts
+      PRIZMA_S3_ENDPOINT_URL: http://minio:9000
+      PRIZMA_S3_ACCESS_KEY_ID: minioadmin
+      PRIZMA_S3_SECRET_ACCESS_KEY: minioadmin123
+      PRIZMA_RABBITMQ_URL: amqp://prizma:prizma@rabbitmq:5672/%2f
+      PRIZMA_RABBITMQ_QUEUE: prizma.jobs
+      PRIZMA_JOB_STATE_DIR: /app/state/jobs
+      PRIZMA_LOCAL_ARTIFACT_DIR: /app/state/local-artifacts
+      PRIZMA_TRITON_URL: triton:8000
+      PRIZMA_TRITON_MODEL_NAME: prizma_stylizer
+      PRIZMA_WORKER_METRICS_PORT: 9100
+    depends_on:
+      minio-init:
+        condition: service_completed_successfully
+      rabbitmq:
+        condition: service_healthy
+    volumes:
+      - shared-state:/app/state
+
+  minio:
+    image: quay.io/minio/minio:RELEASE.2025-04-22T22-12-26Z
+    command: server /data --console-address :9001
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://127.0.0.1:9000/minio/health/live >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  minio-init:
+    image: quay.io/minio/mc:RELEASE.2025-05-21T01-59-54Z
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        mc alias set local http://minio:9000 minioadmin minioadmin123
+        mc mb --ignore-existing local/prizma-artifacts
+        mc anonymous set download local/prizma-artifacts
+
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    environment:
+      RABBITMQ_DEFAULT_USER: prizma
+      RABBITMQ_DEFAULT_PASS: prizma
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD-SHELL", "rabbitmq-diagnostics -q ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  triton:
+    profiles: ["triton"]
+    image: nvcr.io/nvidia/tritonserver:24.04-py3
+    platform: linux/amd64
+    command:
+      - tritonserver
+      - --model-repository=/models
+      - --http-port=8000
+      - --grpc-port=8001
+      - --metrics-port=8002
+    volumes:
+      - ./triton-model-repository:/models:ro
+    ports:
+      - "8001:8000"
+      - "8002:8002"
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./observability/prometheus/prizma-rules.yml:/etc/prometheus/rules/prizma-rules.yml:ro
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+    volumes:
+      - ./observability/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./observability/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+
+volumes:
+  minio-data:
+  rabbitmq-data:
+  shared-state:

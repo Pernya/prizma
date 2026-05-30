@@ -1,0 +1,114 @@
+{{- if .Values.worker.enabled -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "prizma.workerFullname" . }}
+  labels:
+    {{- include "prizma.labels" . | nindent 4 }}
+    {{- include "prizma.componentLabels" (dict "root" . "component" "worker") | nindent 4 }}
+spec:
+  replicas: {{ .Values.worker.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "prizma.componentSelectorLabels" (dict "root" . "component" "worker") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "prizma.componentSelectorLabels" (dict "root" . "component" "worker") | nindent 8 }}
+        {{- with .Values.worker.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      annotations:
+        {{- toYaml .Values.worker.podAnnotations | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "prizma.serviceAccountName" . }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: worker
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["python", "-m", "prizma_backend.worker"]
+          ports:
+            - containerPort: {{ .Values.worker.metricsPort }}
+              name: metrics
+          env:
+            - name: PRIZMA_BASE_URL
+              value: "http://{{ include "prizma.apiFullname" . }}:{{ .Values.api.service.port }}"
+            - name: PRIZMA_ENVIRONMENT
+              value: {{ .Values.app.environment | quote }}
+            - name: PRIZMA_EXECUTION_MODE
+              value: broker
+            - name: PRIZMA_STORAGE_BACKEND
+              value: {{ .Values.app.storageBackend | quote }}
+            - name: PRIZMA_INFERENCE_BACKEND
+              value: {{ .Values.app.inferenceBackend | quote }}
+            - name: PRIZMA_ARTIFACT_BUCKET
+              value: {{ .Values.minio.bucket | quote }}
+            - name: PRIZMA_S3_ENDPOINT_URL
+              value: "http://{{ include "prizma.minioFullname" . }}:{{ .Values.minio.service.apiPort }}"
+            - name: PRIZMA_S3_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "prizma.secretName" . }}
+                  key: minio-root-user
+            - name: PRIZMA_S3_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "prizma.secretName" . }}
+                  key: minio-root-password
+            - name: RABBITMQ_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "prizma.secretName" . }}
+                  key: rabbitmq-username
+            - name: RABBITMQ_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "prizma.secretName" . }}
+                  key: rabbitmq-password
+            - name: PRIZMA_RABBITMQ_URL
+              value: "amqp://$(RABBITMQ_USERNAME):$(RABBITMQ_PASSWORD)@{{ include "prizma.rabbitmqFullname" . }}:{{ .Values.rabbitmq.service.amqpPort }}/%2f"
+            - name: PRIZMA_RABBITMQ_QUEUE
+              value: {{ .Values.rabbitmq.queue | quote }}
+            - name: PRIZMA_JOB_STATE_DIR
+              value: /app/state/jobs
+            - name: PRIZMA_LOCAL_ARTIFACT_DIR
+              value: /app/state/local-artifacts
+            - name: PRIZMA_TRITON_URL
+              value: "{{ include "prizma.tritonFullname" . }}:{{ .Values.triton.httpPort }}"
+            - name: PRIZMA_TRITON_MODEL_NAME
+              value: {{ .Values.triton.modelName | quote }}
+            - name: PRIZMA_WORKER_METRICS_PORT
+              value: {{ .Values.worker.metricsPort | quote }}
+          resources:
+            {{- toYaml .Values.worker.resources | nindent 12 }}
+          volumeMounts:
+            - name: shared-state
+              mountPath: /app/state
+      volumes:
+        - name: shared-state
+          {{- if .Values.sharedState.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "prizma.fullname" . }}-shared-state
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "prizma.workerFullname" . }}
+  labels:
+    {{- include "prizma.labels" . | nindent 4 }}
+    {{- include "prizma.componentLabels" (dict "root" . "component" "worker") | nindent 4 }}
+spec:
+  selector:
+    {{- include "prizma.componentSelectorLabels" (dict "root" . "component" "worker") | nindent 4 }}
+  ports:
+    - name: metrics
+      port: {{ .Values.worker.metricsPort }}
+      targetPort: metrics
+{{- end }}

@@ -1,0 +1,84 @@
+{{- if .Values.triton.enabled -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "prizma.tritonFullname" . }}
+  labels:
+    {{- include "prizma.labels" . | nindent 4 }}
+    {{- include "prizma.componentLabels" (dict "root" . "component" "triton") | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "prizma.componentSelectorLabels" (dict "root" . "component" "triton") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "prizma.componentSelectorLabels" (dict "root" . "component" "triton") | nindent 8 }}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: /metrics
+        prometheus.io/port: {{ .Values.triton.metricsPort | quote }}
+    spec:
+      initContainers:
+        - name: seed-model-repository
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["sh", "-c", "cp -R /app/triton-model-repository/. /models"]
+          volumeMounts:
+            - name: model-repository
+              mountPath: /models
+      containers:
+        - name: triton
+          image: {{ .Values.triton.image | quote }}
+          args:
+            - tritonserver
+            - --model-repository=/models
+            - --http-port={{ .Values.triton.httpPort }}
+            - --grpc-port={{ .Values.triton.grpcPort }}
+            - --metrics-port={{ .Values.triton.metricsPort }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.triton.httpPort }}
+            - name: grpc
+              containerPort: {{ .Values.triton.grpcPort }}
+            - name: metrics
+              containerPort: {{ .Values.triton.metricsPort }}
+          resources:
+            {{- toYaml .Values.triton.resources | nindent 12 }}
+          volumeMounts:
+            - name: model-repository
+              mountPath: /models
+      volumes:
+        - name: model-repository
+          emptyDir: {}
+      {{- with .Values.triton.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.triton.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "prizma.tritonFullname" . }}
+  labels:
+    {{- include "prizma.labels" . | nindent 4 }}
+    {{- include "prizma.componentLabels" (dict "root" . "component" "triton") | nindent 4 }}
+spec:
+  selector:
+    {{- include "prizma.componentSelectorLabels" (dict "root" . "component" "triton") | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.triton.httpPort }}
+      targetPort: http
+    - name: grpc
+      port: {{ .Values.triton.grpcPort }}
+      targetPort: grpc
+    - name: metrics
+      port: {{ .Values.triton.metricsPort }}
+      targetPort: metrics
+{{- end }}

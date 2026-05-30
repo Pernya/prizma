@@ -1,0 +1,147 @@
+image:
+  repository: registry.example.com/prizma/prizma-backend
+  tag: latest
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+app:
+  baseUrl: https://prizma.example.com
+  environment: production
+  executionMode: broker
+  storageBackend: s3
+  inferenceBackend: local
+  maxUploadBytes: 10485760
+  artifactBucket: prizma-artifacts
+
+api:
+  replicaCount: 2
+  service:
+    type: ClusterIP
+    port: 8000
+  ingress:
+    enabled: false
+    className: ""
+    annotations: {}
+    hosts:
+      - host: prizma.local
+        paths:
+          - path: /
+            pathType: Prefix
+    tls: []
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 70
+  podAnnotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/path: /metrics
+    prometheus.io/port: "8000"
+  podLabels: {}
+
+worker:
+  enabled: true
+  replicaCount: 1
+  metricsPort: 9100
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  podAnnotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/path: /metrics
+    prometheus.io/port: "9100"
+  podLabels: {}
+
+sharedState:
+  enabled: true
+  accessModes:
+    - ReadWriteMany
+  size: 5Gi
+  storageClass: ""
+
+minio:
+  enabled: true
+  image: quay.io/minio/minio:RELEASE.2025-04-22T22-12-26Z
+  bucket: prizma-artifacts
+  rootUser: minioadmin
+  rootPassword: minioadmin123
+  service:
+    apiPort: 9000
+    consolePort: 9001
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  persistence:
+    enabled: true
+    accessModes:
+      - ReadWriteOnce
+    size: 20Gi
+    storageClass: ""
+
+rabbitmq:
+  enabled: true
+  image: rabbitmq:3.13-management
+  username: prizma
+  password: prizma
+  queue: prizma.jobs
+  service:
+    amqpPort: 5672
+    managementPort: 15672
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  persistence:
+    enabled: true
+    accessModes:
+      - ReadWriteOnce
+    size: 8Gi
+    storageClass: ""
+
+triton:
+  enabled: false
+  image: nvcr.io/nvidia/tritonserver:24.04-py3
+  modelName: prizma_stylizer
+  httpPort: 8000
+  grpcPort: 8001
+  metricsPort: 8002
+  resources:
+    requests:
+      cpu: 250m
+      memory: 1Gi
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+  nodeSelector: {}
+  tolerations: []
+
+serviceMonitor:
+  enabled: false
+  interval: 15s
+  scrapeTimeout: 5s

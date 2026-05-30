@@ -1,0 +1,120 @@
+# Prizma Platform Skeleton
+
+Production-oriented baseline для кейса Prizma из документа:
+
+- FastAPI API
+- асинхронный worker
+- MinIO как S3-compatible artifact storage
+- RabbitMQ как job broker
+- Triton-compatible inference контур
+- Grafana + Prometheus
+- Kubernetes/Helm/Argo CD и GitLab CI/CD
+
+## Что реализовано
+
+Сервис поддерживает:
+
+- `GET /healthz` и `GET /readyz`
+- `GET /api/v1/styles`
+- `POST /api/v1/jobs` для загрузки изображения и запуска обработки
+- `GET /api/v1/jobs/{job_id}` для статуса
+- `GET /api/v1/jobs/{job_id}/result` для получения результата через API
+- `GET /metrics` для Prometheus
+
+Доступны два режима inference:
+
+- `local`: стилизация через `Pillow`
+- `triton`: вызов Triton Inference Server через официальный HTTP client
+
+В репозитории есть Triton model-repository scaffold с минимальным Python backend-моделем, чтобы контракт и инфраструктура были готовы до подключения настоящей модели.
+
+## Быстрый старт
+
+Локальный запуск:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e .[dev]
+uvicorn prizma_backend.main:app --app-dir src --reload
+```
+
+Локальный platform-стенд:
+
+```bash
+docker compose -p prizma up -d --build
+```
+
+Полезные URL:
+
+- API: [http://localhost:8000/docs](http://localhost:8000/docs)
+- MinIO API: [http://localhost:9000](http://localhost:9000)
+- MinIO Console: [http://localhost:9001](http://localhost:9001)
+- RabbitMQ UI: [http://localhost:15672](http://localhost:15672)
+- Prometheus: [http://localhost:9090](http://localhost:9090)
+- Grafana: [http://localhost:3000](http://localhost:3000)
+
+Grafana по умолчанию использует `admin/admin`.
+RabbitMQ по умолчанию использует `prizma/prizma`.
+MinIO по умолчанию использует `minioadmin/minioadmin123`.
+
+Если нужен Triton-контур локально:
+
+```bash
+PRIZMA_INFERENCE_BACKEND=triton docker compose -p prizma --profile triton up -d --build
+```
+
+## Структура
+
+- [src/prizma_backend/main.py](/Users/sanalpernyaev/Downloads/Новая%20папка/Разработка%20ПО/src/prizma_backend/main.py)
+- [tests/test_api.py](/Users/sanalpernyaev/Downloads/Новая%20папка/Разработка%20ПО/tests/test_api.py)
+- [docker-compose.yml](/Users/sanalpernyaev/Downloads/Новая%20папка/Разработка%20ПО/docker-compose.yml)
+- [charts/prizma](/Users/sanalpernyaev/Downloads/Новая%20папка/Разработка%20ПО/charts/prizma)
+- [triton-model-repository](/Users/sanalpernyaev/Downloads/Новая%20папка/Разработка%20ПО/triton-model-repository)
+- [deploy/k8s/observability](/Users/sanalpernyaev/Downloads/Новая%20папка/Разработка%20ПО/deploy/k8s/observability)
+- [deploy/eks](/Users/sanalpernyaev/Downloads/Новая%20папка/Разработка%20ПО/deploy/eks)
+- [.gitlab-ci.yml](/Users/sanalpernyaev/Downloads/Новая%20папка/Разработка%20ПО/.gitlab-ci.yml)
+
+## CI/CD и GitOps
+
+Pipeline разбит на три контура:
+
+- software: lint, tests, dependency scan, build image
+- async platform: backend + worker + MinIO + RabbitMQ + Triton contract
+- infra: Helm lint, manifest render, Kubernetes manifest validation
+
+CD можно вести двумя путями:
+
+- `deploy-dev` и `deploy-prod` jobs через `helm upgrade --install`
+- Argo CD через манифесты из `deploy/argocd/`
+
+Для `EKS` добавлены отдельные values и манифесты-заготовки. Перед использованием Argo CD нужно заменить `repoURL` в application manifests на реальный GitLab-репозиторий.
+
+## Kubernetes и observability
+
+Helm chart поднимает:
+
+- API deployment
+- worker deployment
+- MinIO
+- RabbitMQ
+- Triton scaffold
+- shared state PVC
+- readiness/liveness probes
+- HPA и `ServiceMonitor`
+
+Отдельно есть минимальные Kubernetes-манифесты для Prometheus и Grafana с:
+
+- scrape `/metrics`
+- pre-provisioned datasource
+- preloaded dashboard `Prizma Overview`
+- базовыми alert rules для error rate, latency и stuck jobs
+
+## Ограничения минимального контура
+
+- shared state хранится в файловом job repository, поэтому в managed Kubernetes нужен RWX storage
+- Triton model repository сейчас scaffold, а не production-модель
+- секреты в chart заданы как baseline и должны быть вынесены во внешний secret manager или External Secrets
+- ML quality, registry и retraining loop в этом репозитории не реализованы как отдельный pipeline
+
+Это осознанный baseline, который уже покрывает backend, broker/storage, CI/CD, observability и Kubernetes-контур из кейса.

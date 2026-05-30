@@ -1,0 +1,17 @@
+{{- if .Values.sharedState.enabled -}}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "prizma.fullname" . }}-shared-state
+  labels:
+    {{- include "prizma.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    {{- toYaml .Values.sharedState.accessModes | nindent 4 }}
+  resources:
+    requests:
+      storage: {{ .Values.sharedState.size }}
+  {{- if .Values.sharedState.storageClass }}
+  storageClassName: {{ .Values.sharedState.storageClass }}
+  {{- end }}
+{{- end }}

@@ -1,0 +1,32 @@
+image:
+  tag: stable
+
+app:
+  baseUrl: https://prizma.example.com
+  environment: production
+
+api:
+  replicaCount: 3
+  ingress:
+    enabled: true
+    className: nginx
+    hosts:
+      - host: prizma.example.com
+        paths:
+          - path: /
+            pathType: Prefix
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 8
+    targetCPUUtilizationPercentage: 70
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+
+serviceMonitor:
+  enabled: true
