@@ -10,6 +10,8 @@ Production-oriented baseline для кейса Prizma из документа:
 - Grafana + Prometheus
 - Kubernetes/Helm/Argo CD и GitLab CI/CD
 
+Текущий production hostname подготовлен под `prizma.pernyaev.ru`.
+
 ## Что реализовано
 
 Сервис поддерживает:
@@ -73,6 +75,7 @@ PRIZMA_INFERENCE_BACKEND=triton docker compose -p prizma --profile triton up -d 
 - [triton-model-repository](/Users/sanalpernyaev/Downloads/Новая%20папка/Разработка%20ПО/triton-model-repository)
 - [deploy/k8s/observability](/Users/sanalpernyaev/Downloads/Новая%20папка/Разработка%20ПО/deploy/k8s/observability)
 - [deploy/eks](/Users/sanalpernyaev/Downloads/Новая%20папка/Разработка%20ПО/deploy/eks)
+- [deploy/regcloud](/Users/sanalpernyaev/Downloads/Новая%20папка/Разработка%20ПО/deploy/regcloud)
 - [.gitlab-ci.yml](/Users/sanalpernyaev/Downloads/Новая%20папка/Разработка%20ПО/.gitlab-ci.yml)
 
 ## CI/CD и GitOps
@@ -89,6 +92,8 @@ CD можно вести двумя путями:
 - Argo CD через манифесты из `deploy/argocd/`
 
 Для `EKS` добавлены отдельные values и манифесты-заготовки. Перед использованием Argo CD нужно заменить `repoURL` в application manifests на реальный GitLab-репозиторий.
+
+DNS-план для реального домена вынесен в [deploy/eks/DNS.md](/Users/sanalpernyaev/Downloads/Новая%20папка/Разработка%20ПО/deploy/eks/DNS.md). Для Reg.Cloud добавлен отдельный профиль [charts/prizma/values-regcloud.yaml](/Users/sanalpernyaev/Downloads/Новая%20папка/Разработка%20ПО/charts/prizma/values-regcloud.yaml) и заметки [deploy/regcloud/README.md](/Users/sanalpernyaev/Downloads/Новая%20папка/Разработка%20ПО/deploy/regcloud/README.md).
 
 ## Kubernetes и observability
 

@@ -2,6 +2,7 @@ services:
   backend:
     build:
       context: .
+    restart: unless-stopped
     environment:
       PRIZMA_BASE_URL: http://localhost:8000
       PRIZMA_ENVIRONMENT: dev
@@ -36,6 +37,7 @@ services:
   worker:
     build:
       context: .
+    restart: unless-stopped
     command: ["python", "-m", "prizma_backend.worker"]
     environment:
       PRIZMA_BASE_URL: http://backend:8000
@@ -64,6 +66,7 @@ services:
 
   minio:
     image: quay.io/minio/minio:RELEASE.2025-04-22T22-12-26Z
+    restart: unless-stopped
     command: server /data --console-address :9001
     environment:
       MINIO_ROOT_USER: minioadmin
@@ -94,6 +97,7 @@ services:
 
   rabbitmq:
     image: rabbitmq:3.13-management
+    restart: unless-stopped
     environment:
       RABBITMQ_DEFAULT_USER: prizma
       RABBITMQ_DEFAULT_PASS: prizma
@@ -126,6 +130,7 @@ services:
 
   prometheus:
     image: prom/prometheus:v2.55.1
+    restart: unless-stopped
     command:
       - --config.file=/etc/prometheus/prometheus.yml
       - --storage.tsdb.path=/prometheus
@@ -137,6 +142,7 @@ services:
 
   grafana:
     image: grafana/grafana:11.2.0
+    restart: unless-stopped
     environment:
       GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}

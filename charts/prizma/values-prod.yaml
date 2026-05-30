@@ -2,7 +2,7 @@ image:
   tag: stable
 
 app:
-  baseUrl: https://prizma.example.com
+  baseUrl: https://prizma.pernyaev.ru
   environment: production
 
 api:
@@ -11,7 +11,7 @@ api:
     enabled: true
     className: nginx
     hosts:
-      - host: prizma.example.com
+      - host: prizma.pernyaev.ru
         paths:
           - path: /
             pathType: Prefix

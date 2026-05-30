@@ -2,7 +2,7 @@ image:
   tag: stable
 
 app:
-  baseUrl: https://prizma.example.com
+  baseUrl: https://prizma.pernyaev.ru
   environment: production
   executionMode: broker
   storageBackend: s3
@@ -20,8 +20,9 @@ api:
       alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
       alb.ingress.kubernetes.io/backend-protocol: HTTP
       alb.ingress.kubernetes.io/group.name: prizma
+      external-dns.alpha.kubernetes.io/hostname: prizma.pernyaev.ru
     hosts:
-      - host: prizma.example.com
+      - host: prizma.pernyaev.ru
         paths:
           - path: /
             pathType: Prefix

@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: prizma
+  labels:
+    app.kubernetes.io/name: prizma
+    app.kubernetes.io/part-of: prizma-platform

@@ -5,7 +5,7 @@ import time
 from collections.abc import Callable
 
 import pika
-from pika.exceptions import AMQPConnectionError
+from pika.exceptions import AMQPConnectionError, AMQPError
 
 from prizma_backend.config import Settings
 
@@ -64,4 +64,8 @@ class RabbitMQConsumer:
         try:
             channel.start_consuming()
         finally:
-            connection.close()
+            try:
+                if connection.is_open:
+                    connection.close()
+            except AMQPError as exc:
+                print(f"RabbitMQ connection cleanup skipped: {exc}")
