@@ -25,6 +25,74 @@ If the Reg.Cloud ingress controller is exposed on `95.163.244.138`, create this 
 
 The private IP `192.168.0.165` must not be used in public DNS. It is only for internal cluster or private-network traffic.
 
+## Plain server mode
+
+If `95.163.244.138` is a regular public server, not a Kubernetes ingress IP, run the public Docker Compose profile on that server:
+
+```bash
+docker compose -f docker-compose.server.yml -p prizma up -d --build
+```
+
+Only port `80` is published. nginx serves the static frontend from `web/` and proxies API traffic to the private backend container.
+
+Check from any machine:
+
+```bash
+curl -I http://prizma.pernyaev.ru/
+curl -I http://prizma.pernyaev.ru/healthz
+```
+
+## Frontend on server, backend on Mac
+
+If most compute and backend operations must stay on the Mac, the public server cannot reach the Mac directly through `localhost`. Use Cloudflare Tunnel from the Mac for the API, and keep the static frontend on the Reg.ru server.
+
+Target layout:
+
+- `prizma.pernyaev.ru` -> `95.163.244.138` -> nginx frontend on the public server
+- `api.prizma.pernyaev.ru` -> Cloudflare Tunnel -> Mac `http://localhost:8000`
+- frontend calls relative `/api/...`; public nginx proxies those requests to `https://api.prizma.pernyaev.ru`
+
+On the Mac:
+
+```bash
+docker compose -p prizma up -d --build backend worker minio rabbitmq
+```
+
+Create a Cloudflare Tunnel public hostname:
+
+- Hostname: `api.prizma.pernyaev.ru`
+- Service: `http://localhost:8000`
+
+If using `cloudflared` CLI on the Mac:
+
+```bash
+cloudflared tunnel login
+cloudflared tunnel create prizma-api
+cloudflared tunnel route dns prizma-api api.prizma.pernyaev.ru
+```
+
+Then create `~/.cloudflared/config.yml` using [deploy/cloudflare/prizma-api-tunnel.example.yml](../cloudflare/prizma-api-tunnel.example.yml), replacing `<TUNNEL_ID>` with the id printed by `cloudflared tunnel create`.
+
+Run the tunnel:
+
+```bash
+cloudflared tunnel run prizma-api
+```
+
+On the public Reg.ru server, run only the frontend nginx:
+
+```bash
+docker compose -f docker-compose.frontend-server.yml -p prizma-frontend up -d
+```
+
+Check:
+
+```bash
+curl -I http://prizma.pernyaev.ru/
+curl -I http://prizma.pernyaev.ru/healthz
+curl -I https://api.prizma.pernyaev.ru/healthz
+```
+
 ## Kubernetes
 
 Install an nginx ingress controller and cert-manager in the cluster, then deploy:

@@ -47,6 +47,20 @@ uvicorn prizma_backend.main:app --app-dir src --reload
 docker compose -p prizma up -d --build
 ```
 
+Публичный stand для обычного сервера за `95.163.244.138`:
+
+```bash
+docker compose -f docker-compose.server.yml -p prizma up -d --build
+```
+
+Если фронт должен жить на публичном сервере, а backend оставаться на Mac, используйте:
+
+```bash
+docker compose -f docker-compose.frontend-server.yml -p prizma-frontend up -d
+```
+
+API в этом режиме публикуется с Mac через Cloudflare Tunnel как `api.prizma.pernyaev.ru`.
+
 Полезные URL:
 
 - API: [http://localhost:8000/docs](http://localhost:8000/docs)

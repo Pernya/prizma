@@ -1,0 +1,7 @@
+tunnel: prizma-api
+credentials-file: /Users/sanalpernyaev/.cloudflared/<TUNNEL_ID>.json
+
+ingress:
+  - hostname: api.prizma.pernyaev.ru
+    service: http://localhost:8000
+  - service: http_status:404
