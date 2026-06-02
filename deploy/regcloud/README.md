@@ -49,8 +49,8 @@ If most compute and backend operations must stay on the Mac, the public server c
 Target layout:
 
 - `prizma.pernyaev.ru` -> `95.163.244.138` -> nginx frontend on the public server
-- `api.prizma.pernyaev.ru` -> Cloudflare Tunnel -> Mac `http://localhost:8000`
-- frontend calls relative `/api/...`; public nginx proxies those requests to `https://api.prizma.pernyaev.ru`
+- `api.pernyaev.ru` -> Cloudflare Tunnel -> Mac `http://localhost:8000`
+- frontend calls relative `/api/...`; public nginx proxies those requests to `https://api.pernyaev.ru`
 
 On the Mac:
 
@@ -60,7 +60,7 @@ docker compose -p prizma up -d --build backend worker minio rabbitmq
 
 Create a Cloudflare Tunnel public hostname:
 
-- Hostname: `api.prizma.pernyaev.ru`
+- Hostname: `api.pernyaev.ru`
 - Service: `http://localhost:8000`
 
 If using `cloudflared` CLI on the Mac:
@@ -68,7 +68,7 @@ If using `cloudflared` CLI on the Mac:
 ```bash
 cloudflared tunnel login
 cloudflared tunnel create prizma-api
-cloudflared tunnel route dns prizma-api api.prizma.pernyaev.ru
+cloudflared tunnel route dns prizma-api api.pernyaev.ru
 ```
 
 Then create `~/.cloudflared/config.yml` using [deploy/cloudflare/prizma-api-tunnel.example.yml](../cloudflare/prizma-api-tunnel.example.yml), replacing `<TUNNEL_ID>` with the id printed by `cloudflared tunnel create`.
@@ -90,7 +90,7 @@ Check:
 ```bash
 curl -I http://prizma.pernyaev.ru/
 curl -I http://prizma.pernyaev.ru/healthz
-curl -I https://api.prizma.pernyaev.ru/healthz
+curl -I https://api.pernyaev.ru/healthz
 ```
 
 ## Kubernetes

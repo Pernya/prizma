@@ -59,7 +59,7 @@ docker compose -f docker-compose.server.yml -p prizma up -d --build
 docker compose -f docker-compose.frontend-server.yml -p prizma-frontend up -d
 ```
 
-API в этом режиме публикуется с Mac через Cloudflare Tunnel как `api.prizma.pernyaev.ru`.
+API в этом режиме публикуется с Mac через Cloudflare Tunnel как `api.pernyaev.ru`.
 
 Полезные URL:
 
