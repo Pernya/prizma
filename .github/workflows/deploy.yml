@@ -1,0 +1,73 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment
+        required: true
+        type: choice
+        options:
+          - dev
+          - regcloud
+          - prod
+      image_tag:
+        description: Image tag to deploy
+        required: true
+        default: latest
+
+permissions:
+  contents: read
+  packages: read
+
+env:
+  IMAGE_NAME: ghcr.io/pernya/prizma-backend
+
+jobs:
+  deploy:
+    name: Deploy with Helm
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.16.4
+
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: v1.31.0
+
+      - name: Configure kubeconfig
+        env:
+          KUBECONFIG_B64: ${{ secrets.KUBECONFIG_B64 }}
+        run: |
+          test -n "$KUBECONFIG_B64"
+          mkdir -p "$HOME/.kube"
+          echo "$KUBECONFIG_B64" | base64 -d > "$HOME/.kube/config"
+          chmod 600 "$HOME/.kube/config"
+
+      - name: Select values file
+        id: values
+        run: |
+          case "${{ inputs.environment }}" in
+            dev) echo "file=charts/prizma/values-dev.yaml" >> "$GITHUB_OUTPUT" ;;
+            regcloud) echo "file=charts/prizma/values-regcloud.yaml" >> "$GITHUB_OUTPUT" ;;
+            prod) echo "file=charts/prizma/values-prod.yaml" >> "$GITHUB_OUTPUT" ;;
+          esac
+
+      - name: Deploy
+        run: |
+          helm upgrade --install prizma charts/prizma \
+            --namespace prizma \
+            --create-namespace \
+            -f "${{ steps.values.outputs.file }}" \
+            --set image.repository="${{ env.IMAGE_NAME }}" \
+            --set image.tag="${{ inputs.image_tag }}"
+
+      - name: Show rollout status
+        run: kubectl rollout status deployment/prizma-prizma-api -n prizma --timeout=180s

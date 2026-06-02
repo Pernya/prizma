@@ -32,3 +32,32 @@ For GitLab CI/CD, configure these project variables before relying on deploy job
 
 The chart production profiles expect a Kubernetes Secret named `prizma-runtime-overrides`
 or an ExternalSecret-backed Secret with the same keys.
+
+## GitHub Actions CD
+
+The GitHub CI workflow pushes backend images to GitHub Container Registry:
+
+```text
+ghcr.io/pernya/prizma-backend:<commit-sha>
+ghcr.io/pernya/prizma-backend:latest
+```
+
+Manual deployment uses `.github/workflows/deploy.yml`.
+
+Configure a GitHub Environment named `dev`, `regcloud` or `prod`, then add this secret:
+
+- `KUBECONFIG_B64`: base64-encoded kubeconfig for the target cluster
+
+Make the GHCR package public or add an image pull secret to the target cluster before deploying.
+
+Encode kubeconfig locally:
+
+```bash
+base64 -i ~/.kube/config | pbcopy
+```
+
+Run deployment in GitHub:
+
+```text
+Actions -> Deploy -> Run workflow
+```
