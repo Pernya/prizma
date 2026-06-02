@@ -16,6 +16,13 @@ git remote add origin <REPOSITORY_SSH_OR_HTTPS_URL>
 git push -u origin main
 ```
 
+If `origin` already points to GitLab and GitHub should be an additional remote:
+
+```bash
+git remote add github https://github.com/Pernya/prizma.git
+git push -u github main
+```
+
 For GitLab CI/CD, configure these project variables before relying on deploy jobs:
 
 - `KUBECONFIG_DEV`

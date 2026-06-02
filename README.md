@@ -93,6 +93,7 @@ PRIZMA_INFERENCE_BACKEND=triton docker compose -p prizma --profile triton up -d 
 - [deploy/eks](/Users/sanalpernyaev/Downloads/Новая%20папка/Разработка%20ПО/deploy/eks)
 - [deploy/regcloud](/Users/sanalpernyaev/Downloads/Новая%20папка/Разработка%20ПО/deploy/regcloud)
 - [.gitlab-ci.yml](/Users/sanalpernyaev/Downloads/Новая%20папка/Разработка%20ПО/.gitlab-ci.yml)
+- [.github/workflows/ci.yml](/Users/sanalpernyaev/Downloads/Новая%20папка/Разработка%20ПО/.github/workflows/ci.yml)
 - [docs/git/remote-setup.md](/Users/sanalpernyaev/Downloads/Новая%20папка/Разработка%20ПО/docs/git/remote-setup.md)
 
 ## CI/CD и GitOps
@@ -104,7 +105,14 @@ Pipeline разбит на несколько контуров:
 - security: SAST, secret detection, container scan, compose smoke test
 - infra: Helm lint, manifest render, Kubernetes manifest validation for dev/prod/EKS/Reg.Cloud/rollout values
 
-CD можно вести двумя путями:
+GitHub Actions запускает базовый CI без GitLab shared runners:
+
+- Python lint/test/security gates
+- MLOps gates
+- Helm/kubeconform validation
+- Docker image build
+
+GitLab CI/CD остается подготовленным для GitLab runners и deploy jobs. CD можно вести двумя путями:
 
 - `deploy-dev` и `deploy-prod` jobs через `helm upgrade --install`
 - Argo CD через манифесты из `deploy/argocd/`
