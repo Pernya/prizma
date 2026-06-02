@@ -7,8 +7,8 @@ metadata:
     {{- include "prizma.labels" . | nindent 4 }}
 spec:
   scaleTargetRef:
-    apiVersion: apps/v1
-    kind: Deployment
+    apiVersion: {{ ternary "argoproj.io/v1alpha1" "apps/v1" .Values.rollouts.enabled }}
+    kind: {{ ternary "Rollout" "Deployment" .Values.rollouts.enabled }}
     name: {{ include "prizma.apiFullname" . }}
   minReplicas: {{ .Values.api.autoscaling.minReplicas }}
   maxReplicas: {{ .Values.api.autoscaling.maxReplicas }}

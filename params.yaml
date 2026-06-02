@@ -1,0 +1,22 @@
+dataset:
+  seed: 42
+  image_size: 128
+  samples: 8
+
+model:
+  name: prizma_stylizer
+  version: baseline-pillow-v1
+  champion_alias: champion
+  styles:
+    - noir
+    - vivid
+    - sketch
+    - warm
+
+evaluation:
+  max_p95_latency_ms: 2500
+  min_success_rate: 0.99
+
+drift:
+  warning_threshold: 0.12
+  critical_threshold: 0.25

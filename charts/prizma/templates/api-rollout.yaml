@@ -1,6 +1,6 @@
-{{- if not .Values.rollouts.enabled -}}
-apiVersion: apps/v1
-kind: Deployment
+{{- if .Values.rollouts.enabled -}}
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
 metadata:
   name: {{ include "prizma.apiFullname" . }}
   labels:
@@ -8,6 +8,15 @@ metadata:
     {{- include "prizma.componentLabels" (dict "root" . "component" "api") | nindent 4 }}
 spec:
   replicas: {{ .Values.api.replicaCount }}
+  strategy:
+    canary:
+      steps:
+        {{- toYaml .Values.rollouts.canary.steps | nindent 8 }}
+      {{- if .Values.rollouts.canary.analysis.enabled }}
+      analysis:
+        templates:
+          - templateName: {{ include "prizma.apiFullname" . }}-analysis
+      {{- end }}
   selector:
     matchLabels:
       {{- include "prizma.componentSelectorLabels" (dict "root" . "component" "api") | nindent 6 }}

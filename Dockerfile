@@ -7,6 +7,7 @@ WORKDIR /app
 
 COPY pyproject.toml README.md ./
 COPY src ./src
+COPY scripts ./scripts
 COPY triton-model-repository ./triton-model-repository
 
 RUN pip install --no-cache-dir .

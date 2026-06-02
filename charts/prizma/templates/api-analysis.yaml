@@ -1,0 +1,32 @@
+{{- if and .Values.rollouts.enabled .Values.rollouts.canary.analysis.enabled -}}
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: {{ include "prizma.apiFullname" . }}-analysis
+  labels:
+    {{- include "prizma.labels" . | nindent 4 }}
+spec:
+  metrics:
+    - name: api-error-rate
+      interval: 1m
+      count: 3
+      successCondition: result[0] <= {{ .Values.rollouts.canary.analysis.errorRateThreshold }}
+      failureLimit: 1
+      provider:
+        prometheus:
+          address: {{ .Values.rollouts.canary.analysis.prometheusAddress | quote }}
+          query: |
+            sum(rate(prizma_http_requests_total{status=~"5.."}[5m]))
+            /
+            clamp_min(sum(rate(prizma_http_requests_total[5m])), 1)
+    - name: api-latency-p95
+      interval: 1m
+      count: 3
+      successCondition: result[0] <= {{ .Values.rollouts.canary.analysis.latencyP95ThresholdSeconds }}
+      failureLimit: 1
+      provider:
+        prometheus:
+          address: {{ .Values.rollouts.canary.analysis.prometheusAddress | quote }}
+          query: |
+            histogram_quantile(0.95, sum(rate(prizma_http_request_duration_seconds_bucket[5m])) by (le))
+{{- end }}

@@ -102,6 +102,78 @@ def test_job_urls_respect_forwarded_headers(tmp_path: Path) -> None:
     )
 
 
+def test_job_rejects_invalid_image_payload(tmp_path: Path) -> None:
+    app = create_app(
+        Settings(
+            local_artifact_dir=tmp_path / "artifacts",
+            job_state_dir=tmp_path / "jobs",
+            base_url="http://testserver",
+        )
+    )
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/v1/jobs",
+        data={"style": "vivid"},
+        files={"file": ("not-image.png", b"not an image", "image/png")},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Uploaded file is not a valid image."
+
+
+def test_job_can_require_api_key(tmp_path: Path) -> None:
+    app = create_app(
+        Settings(
+            local_artifact_dir=tmp_path / "artifacts",
+            job_state_dir=tmp_path / "jobs",
+            base_url="http://testserver",
+            api_key="secret",
+        )
+    )
+    client = TestClient(app)
+
+    rejected = client.post(
+        "/api/v1/jobs",
+        data={"style": "vivid"},
+        files={"file": ("photo.png", _sample_image_bytes(), "image/png")},
+    )
+    accepted = client.post(
+        "/api/v1/jobs",
+        headers={"X-API-Key": "secret"},
+        data={"style": "vivid"},
+        files={"file": ("photo.png", _sample_image_bytes(), "image/png")},
+    )
+
+    assert rejected.status_code == 401
+    assert accepted.status_code == 202
+
+
+def test_result_url_can_use_public_base_url(tmp_path: Path) -> None:
+    app = create_app(
+        Settings(
+            local_artifact_dir=tmp_path / "artifacts",
+            job_state_dir=tmp_path / "jobs",
+            base_url="http://testserver",
+            result_public_base_url="https://cdn.example.com/prizma",
+        )
+    )
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/v1/jobs",
+        data={"style": "warm"},
+        files={"file": ("photo.png", _sample_image_bytes(), "image/png")},
+    )
+    payload = response.json()
+    details = client.get(f"/api/v1/jobs/{payload['job_id']}")
+
+    assert response.status_code == 202
+    assert details.json()["result_url"] == (
+        f"https://cdn.example.com/prizma/api/v1/jobs/{payload['job_id']}/result"
+    )
+
+
 def test_metrics_endpoint(tmp_path: Path) -> None:
     app = create_app(
         Settings(

@@ -1,6 +1,8 @@
 stages:
   - validate
+  - mlops
   - build
+  - security
   - deploy
 
 variables:
@@ -30,8 +32,8 @@ software:lint:
   before_script:
     - pip install -e .[dev]
   script:
-    - ruff check src tests
-    - ruff format --check src tests
+    - ruff check src tests scripts
+    - ruff format --check src tests scripts
 
 software:test:
   stage: validate
@@ -58,6 +60,48 @@ software:dependency-scan:
   script:
     - pip-audit --progress-spinner=off
 
+security:sast:
+  stage: validate
+  image: python:3.12-slim
+  rules:
+    - changes:
+        - src/**/*
+        - scripts/**/*
+  before_script:
+    - pip install bandit
+  script:
+    - bandit -r src scripts -q
+
+security:secret-detect:
+  stage: validate
+  image: python:3.12-slim
+  rules:
+    - if: $CI_COMMIT_BRANCH
+  before_script:
+    - pip install detect-secrets
+  script:
+    - python scripts/security/check_detect_secrets.py
+
+mlops:pipeline:
+  stage: mlops
+  image: python:3.12-slim
+  rules:
+    - changes:
+        - dvc.yaml
+        - params.yaml
+        - scripts/mlops/**/*
+        - src/prizma_backend/inference.py
+  before_script:
+    - pip install -e .[dev]
+  script:
+    - make mlops
+  artifacts:
+    when: always
+    paths:
+      - docs/mlops/model-card.md
+      - reports/mlops/*.json
+      - models/prizma_stylizer/metadata.json
+
 infra:helm-lint:
   stage: validate
   image: alpine/helm:3.16.4
@@ -68,21 +112,30 @@ infra:helm-lint:
   script:
     - helm lint charts/prizma
     - helm template prizma charts/prizma -f charts/prizma/values-dev.yaml > rendered-dev.yaml
+    - helm template prizma charts/prizma -f charts/prizma/values-prod.yaml > rendered-prod.yaml
     - helm template prizma charts/prizma -f charts/prizma/values-eks.yaml > rendered-eks.yaml
+    - helm template prizma charts/prizma -f charts/prizma/values-regcloud.yaml > rendered-regcloud.yaml
+    - helm template prizma charts/prizma --set rollouts.enabled=true --set serviceMonitor.enabled=true > rendered-rollout.yaml
   artifacts:
     paths:
       - rendered-dev.yaml
+      - rendered-prod.yaml
       - rendered-eks.yaml
+      - rendered-regcloud.yaml
+      - rendered-rollout.yaml
 
 infra:kubeconform:
   stage: validate
   image: ghcr.io/yannh/kubeconform:latest
+  needs:
+    - job: infra:helm-lint
+      artifacts: true
   rules:
     - changes:
         - deploy/**/*
         - charts/**/*
   script:
-    - kubeconform -strict -ignore-missing-schemas -summary deploy/k8s/observability/*.yaml
+    - kubeconform -strict -ignore-missing-schemas -summary rendered-dev.yaml rendered-prod.yaml rendered-eks.yaml rendered-regcloud.yaml rendered-rollout.yaml deploy/k8s/observability/*.yaml deploy/argocd/*.yaml
 
 software:build-image:
   stage: build
@@ -103,6 +156,48 @@ software:build-image:
       --dockerfile "$CI_PROJECT_DIR/Dockerfile"
       --destination "$IMAGE_NAME:$IMAGE_TAG"
       --destination "$IMAGE_NAME:latest"
+
+security:container-scan:
+  stage: security
+  image:
+    name: aquasec/trivy:latest
+    entrypoint: [""]
+  needs:
+    - software:build-image
+  rules:
+    - if: $CI_COMMIT_BRANCH
+  script:
+    - trivy image --exit-code 1 --severity HIGH,CRITICAL "$IMAGE_NAME:$IMAGE_TAG"
+
+software:e2e-compose:
+  stage: security
+  image: docker:27
+  services:
+    - docker:27-dind
+  needs:
+    - software:build-image
+  variables:
+    DOCKER_HOST: tcp://docker:2375
+    DOCKER_TLS_CERTDIR: ""
+  rules:
+    - if: $CI_COMMIT_BRANCH
+  script:
+    - docker compose -p prizma-ci up -d --build backend worker minio rabbitmq
+    - |
+      for i in $(seq 1 30); do
+        wget -qO- http://docker:8000/healthz && break
+        sleep 2
+      done
+    - |
+      cat > smoke.png.b64 <<'EOF'
+      iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADUlEQVR4nGP4z8DwHwAFBQIAHl6u2QAAAABJRU5ErkJggg==
+      EOF
+    - base64 -d smoke.png.b64 > smoke.png
+    - apk add --no-cache curl
+    - curl -fsS -F style=vivid -F file=@smoke.png\;type=image/png http://docker:8000/api/v1/jobs
+  after_script:
+    - docker compose -p prizma-ci logs backend worker || true
+    - docker compose -p prizma-ci down -v || true
 
 deploy:dev:
   stage: deploy

@@ -1,0 +1,48 @@
+stages:
+  prepare_golden_set:
+    cmd: PYTHONPATH=src python scripts/mlops/prepare_golden_set.py --params params.yaml --output data/golden/input
+    deps:
+      - scripts/mlops/prepare_golden_set.py
+      - params.yaml
+    outs:
+      - data/golden/input
+
+  train_baseline:
+    cmd: PYTHONPATH=src python scripts/mlops/train_baseline.py --params params.yaml --output models/prizma_stylizer/metadata.json
+    deps:
+      - scripts/mlops/train_baseline.py
+      - src/prizma_backend/inference.py
+      - params.yaml
+    outs:
+      - models/prizma_stylizer/metadata.json
+
+  evaluate_model:
+    cmd: PYTHONPATH=src python scripts/mlops/evaluate_model.py --params params.yaml --input data/golden/input --model models/prizma_stylizer/metadata.json --output reports/mlops/benchmark.json
+    deps:
+      - scripts/mlops/evaluate_model.py
+      - src/prizma_backend/inference.py
+      - data/golden/input
+      - models/prizma_stylizer/metadata.json
+      - params.yaml
+    outs:
+      - reports/mlops/benchmark.json
+
+  drift_report:
+    cmd: PYTHONPATH=src python scripts/mlops/drift_report.py --params params.yaml --baseline data/golden/input --current data/monitoring/input --output reports/mlops/drift.json
+    deps:
+      - scripts/mlops/drift_report.py
+      - data/golden/input
+      - params.yaml
+    outs:
+      - reports/mlops/drift.json
+
+  model_card:
+    cmd: PYTHONPATH=src python scripts/mlops/generate_model_card.py --params params.yaml --model models/prizma_stylizer/metadata.json --benchmark reports/mlops/benchmark.json --drift reports/mlops/drift.json --output docs/mlops/model-card.md
+    deps:
+      - scripts/mlops/generate_model_card.py
+      - models/prizma_stylizer/metadata.json
+      - reports/mlops/benchmark.json
+      - reports/mlops/drift.json
+      - params.yaml
+    outs:
+      - docs/mlops/model-card.md

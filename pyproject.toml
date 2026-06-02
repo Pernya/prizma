@@ -18,12 +18,15 @@ dependencies = [
   "prometheus-client>=0.21",
   "pydantic-settings>=2.6",
   "python-multipart>=0.0.9",
+  "PyYAML>=6.0",
   "tritonclient[http]>=2.58",
   "uvicorn[standard]>=0.30",
 ]
 
 [project.optional-dependencies]
 dev = [
+  "bandit>=1.8",
+  "detect-secrets>=1.5",
   "pip-audit>=2.8",
   "pytest>=8.3",
   "ruff>=0.8",

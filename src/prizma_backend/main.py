@@ -1,8 +1,9 @@
 from time import perf_counter
 
-from fastapi import BackgroundTasks, FastAPI, File, Form, Request, UploadFile
+from fastapi import BackgroundTasks, FastAPI, File, Form, Header, HTTPException, Request, UploadFile
 from fastapi.responses import JSONResponse, Response
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
+from starlette import status
 
 from prizma_backend.config import Settings, get_settings
 from prizma_backend.metrics import record_request
@@ -57,7 +58,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         background_tasks: BackgroundTasks,
         style: str = STYLE_FORM,
         file: UploadFile = UPLOAD_FILE,
+        x_api_key: str | None = Header(default=None),
     ):
+        _require_api_key(settings, x_api_key)
         record = app.state.job_service.create_job(file=file, style=style)
         if settings.execution_mode == "broker":
             app.state.job_service.dispatch_job(record.job_id)
@@ -83,6 +86,14 @@ def _external_base_url(request: Request) -> str:
     if not host:
         return str(request.base_url).rstrip("/")
     return f"{proto}://{host.split(',')[0].strip()}".rstrip("/")
+
+
+def _require_api_key(settings: Settings, value: str | None) -> None:
+    if settings.api_key and value != settings.api_key:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing or invalid API key.",
+        )
 
 
 app = create_app()

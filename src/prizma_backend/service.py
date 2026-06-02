@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import re
 from datetime import datetime, timezone
+from io import BytesIO
 from pathlib import Path
 from uuid import uuid4
 
 from fastapi import HTTPException, UploadFile, status
+from PIL import Image, UnidentifiedImageError
 
 from prizma_backend.config import Settings
 from prizma_backend.inference import STYLES, InferenceEngine, build_inference_engine
@@ -46,6 +48,7 @@ class JobService:
                 status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
                 detail=f"File exceeds {self.settings.max_upload_bytes} bytes.",
             )
+        self._validate_image_payload(payload)
 
         job_id = uuid4().hex
         safe_stem = self._safe_stem(file.filename or "upload")
@@ -107,7 +110,9 @@ class JobService:
 
         result_url = None
         if job.result_key:
-            result_base_url = (base_url or self.settings.base_url).rstrip("/")
+            result_base_url = (
+                self.settings.result_public_base_url or base_url or self.settings.base_url
+            ).rstrip("/")
             result_url = f"{result_base_url}/api/v1/jobs/{job.job_id}/result"
 
         return JobDetails(
@@ -153,6 +158,17 @@ class JobService:
                 status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
                 detail=f"Unsupported content type: {content_type}.",
             )
+
+    @staticmethod
+    def _validate_image_payload(payload: bytes) -> None:
+        try:
+            with Image.open(BytesIO(payload)) as image:
+                image.verify()
+        except (UnidentifiedImageError, OSError) as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Uploaded file is not a valid image.",
+            ) from exc
 
     @staticmethod
     def _safe_stem(filename: str) -> str:

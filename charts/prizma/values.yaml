@@ -20,6 +20,9 @@ app:
   inferenceBackend: local
   maxUploadBytes: 10485760
   artifactBucket: prizma-artifacts
+  apiKey: ""
+  resultPublicBaseUrl: ""
+  artifactRetentionDays: 7
 
 api:
   replicaCount: 2
@@ -145,3 +148,25 @@ serviceMonitor:
   enabled: false
   interval: 15s
   scrapeTimeout: 5s
+
+rollouts:
+  enabled: false
+  canary:
+    steps:
+      - setWeight: 20
+      - pause:
+          duration: 2m
+      - setWeight: 50
+      - pause:
+          duration: 5m
+    analysis:
+      enabled: true
+      prometheusAddress: http://prometheus-server.monitoring.svc.cluster.local
+      errorRateThreshold: 0.02
+      latencyP95ThresholdSeconds: 3
+
+retention:
+  enabled: false
+  schedule: "17 2 * * *"
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3

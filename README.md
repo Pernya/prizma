@@ -9,6 +9,8 @@ Production-oriented baseline для кейса Prizma из документа:
 - Triton-compatible inference контур
 - Grafana + Prometheus
 - Kubernetes/Helm/Argo CD и GitLab CI/CD
+- DVC-style MLOps pipeline, model card, drift/evaluation gates
+- security gates and rollout/rollback runbooks
 
 Текущий production hostname подготовлен под `prizma.pernyaev.ru`.
 
@@ -94,11 +96,12 @@ PRIZMA_INFERENCE_BACKEND=triton docker compose -p prizma --profile triton up -d 
 
 ## CI/CD и GitOps
 
-Pipeline разбит на три контура:
+Pipeline разбит на несколько контуров:
 
-- software: lint, tests, dependency scan, build image
-- async platform: backend + worker + MinIO + RabbitMQ + Triton contract
-- infra: Helm lint, manifest render, Kubernetes manifest validation
+- software: lint, tests, dependency scan, image build
+- mlops: golden set, baseline metadata, evaluation, drift report, model card
+- security: SAST, secret detection, container scan, compose smoke test
+- infra: Helm lint, manifest render, Kubernetes manifest validation for dev/prod/EKS/Reg.Cloud/rollout values
 
 CD можно вести двумя путями:
 
@@ -121,6 +124,8 @@ Helm chart поднимает:
 - shared state PVC
 - readiness/liveness probes
 - HPA и `ServiceMonitor`
+- optional Argo Rollouts canary with Prometheus analysis
+- artifact retention CronJob
 
 Отдельно есть минимальные Kubernetes-манифесты для Prometheus и Grafana с:
 
@@ -129,11 +134,42 @@ Helm chart поднимает:
 - preloaded dashboard `Prizma Overview`
 - базовыми alert rules для error rate, latency и stuck jobs
 
+## MLOps и эксплуатация
+
+Локальный MLOps gate:
+
+```bash
+make mlops
+```
+
+Он генерирует synthetic golden set, metadata baseline, benchmark, drift report и model card:
+
+- [dvc.yaml](/Users/sanalpernyaev/Downloads/Новая%20папка/Разработка%20ПО/dvc.yaml)
+- [params.yaml](/Users/sanalpernyaev/Downloads/Новая%20папка/Разработка%20ПО/params.yaml)
+- [docs/mlops/model-card.md](/Users/sanalpernyaev/Downloads/Новая%20папка/Разработка%20ПО/docs/mlops/model-card.md)
+
+Эксплуатационные документы:
+
+- [docs/security/threat-model.md](/Users/sanalpernyaev/Downloads/Новая%20папка/Разработка%20ПО/docs/security/threat-model.md)
+- [docs/runbooks/retraining.md](/Users/sanalpernyaev/Downloads/Новая%20папка/Разработка%20ПО/docs/runbooks/retraining.md)
+- [docs/runbooks/rollback.md](/Users/sanalpernyaev/Downloads/Новая%20папка/Разработка%20ПО/docs/runbooks/rollback.md)
+- [docs/runbooks/incident-response.md](/Users/sanalpernyaev/Downloads/Новая%20папка/Разработка%20ПО/docs/runbooks/incident-response.md)
+
+Локальные проверки перед commit:
+
+```bash
+make lint
+make test
+make security
+make mlops
+make kube-validate
+```
+
 ## Ограничения минимального контура
 
 - shared state хранится в файловом job repository, поэтому в managed Kubernetes нужен RWX storage
 - Triton model repository сейчас scaffold, а не production-модель
-- секреты в chart заданы как baseline и должны быть вынесены во внешний secret manager или External Secrets
-- ML quality, registry и retraining loop в этом репозитории не реализованы как отдельный pipeline
+- chart secrets должны быть вынесены во внешний secret manager или External Secrets перед production
+- MLflow logging в baseline включается автоматически только если пакет `mlflow` установлен в среде
 
-Это осознанный baseline, который уже покрывает backend, broker/storage, CI/CD, observability и Kubernetes-контур из кейса.
+Это production-oriented baseline, который покрывает backend, broker/storage, CI/CD, MLOps governance, observability и Kubernetes-контур из кейса.

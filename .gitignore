@@ -5,6 +5,8 @@
 __pycache__/
 *.pyc
 data/
+models/
+reports/
 htmlcov/
 dist/
 build/
