@@ -15,13 +15,36 @@ const setStatus = (message, state = "idle") => {
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+
+const toLocalApiUrl = (url) => {
+  const parsed = new URL(url, window.location.origin);
+  return `${parsed.pathname}${parsed.search}`;
+};
+
+const readErrorMessage = async (response, fallback) => {
+  const contentType = response.headers.get("content-type") || "";
+  if (contentType.includes("application/json")) {
+    const payload = await response.json().catch(() => ({}));
+    return payload.detail || payload.message || `${fallback} (${response.status})`;
+  }
+
+  const text = await response.text().catch(() => "");
+  return text.trim() || `${fallback} (${response.status})`;
+};
+
 const loadStyles = async () => {
   const response = await fetch("/api/v1/styles");
   if (!response.ok) {
-    throw new Error("API недоступен");
+    throw new Error(await readErrorMessage(response, "API недоступен"));
   }
 
   const styles = await response.json();
+  if (!styles.length) {
+    throw new Error("Backend не вернул список стилей");
+  }
+
   styleSelect.replaceChildren(
     ...styles.map((style) => {
       const option = document.createElement("option");
@@ -34,10 +57,11 @@ const loadStyles = async () => {
 };
 
 const waitForJob = async (statusUrl) => {
+  const localStatusUrl = toLocalApiUrl(statusUrl);
   for (let attempt = 0; attempt < 45; attempt += 1) {
-    const response = await fetch(statusUrl);
+    const response = await fetch(localStatusUrl);
     if (!response.ok) {
-      throw new Error("Не удалось получить статус задачи");
+      throw new Error(await readErrorMessage(response, "Не удалось получить статус задачи"));
     }
 
     const job = await response.json();
@@ -68,6 +92,17 @@ form.addEventListener("submit", async (event) => {
   emptyState.hidden = false;
 
   try {
+    const selectedFile = fileInput.files[0];
+    if (!selectedFile) {
+      throw new Error("Выберите изображение");
+    }
+    if (!ALLOWED_TYPES.has(selectedFile.type)) {
+      throw new Error("Поддерживаются только PNG, JPEG и WebP");
+    }
+    if (selectedFile.size > MAX_UPLOAD_BYTES) {
+      throw new Error("Файл больше 10 МБ");
+    }
+
     setStatus("Отправляю изображение...", "ready");
     const formData = new FormData(form);
     const response = await fetch("/api/v1/jobs", {
@@ -76,13 +111,12 @@ form.addEventListener("submit", async (event) => {
     });
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({}));
-      throw new Error(error.detail || "Не удалось создать задачу");
+      throw new Error(await readErrorMessage(response, "Не удалось создать задачу"));
     }
 
     const created = await response.json();
     const job = await waitForJob(created.status_url);
-    resultImage.src = `${job.result_url}?t=${Date.now()}`;
+    resultImage.src = `${toLocalApiUrl(job.result_url)}?t=${Date.now()}`;
     resultImage.hidden = false;
     emptyState.hidden = true;
     setStatus("Готово", "ready");

@@ -100,14 +100,15 @@ class JobService:
             job.finished_at = datetime.now(timezone.utc)
             self.repository.save(job)
 
-    def get_job(self, job_id: str) -> JobDetails:
+    def get_job(self, job_id: str, base_url: str | None = None) -> JobDetails:
         job = self.repository.get(job_id)
         if job is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found.")
 
         result_url = None
         if job.result_key:
-            result_url = f"{self.settings.base_url}/api/v1/jobs/{job.job_id}/result"
+            result_base_url = (base_url or self.settings.base_url).rstrip("/")
+            result_url = f"{result_base_url}/api/v1/jobs/{job.job_id}/result"
 
         return JobDetails(
             job_id=job.job_id,

@@ -53,6 +53,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.post("/api/v1/jobs", status_code=202)
     async def create_job(
+        request: Request,
         background_tasks: BackgroundTasks,
         style: str = STYLE_FORM,
         file: UploadFile = UPLOAD_FILE,
@@ -62,11 +63,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             app.state.job_service.dispatch_job(record.job_id)
         else:
             background_tasks.add_task(app.state.job_service.process_job, record.job_id)
-        return app.state.job_service.build_created_response(settings.base_url, record)
+        return app.state.job_service.build_created_response(_external_base_url(request), record)
 
     @app.get("/api/v1/jobs/{job_id}")
-    async def get_job(job_id: str):
-        return app.state.job_service.get_job(job_id)
+    async def get_job(request: Request, job_id: str):
+        return app.state.job_service.get_job(job_id, base_url=_external_base_url(request))
 
     @app.get("/api/v1/jobs/{job_id}/result")
     async def get_result(job_id: str) -> Response:
@@ -74,6 +75,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return Response(content=stored.payload, media_type=stored.content_type)
 
     return app
+
+
+def _external_base_url(request: Request) -> str:
+    proto = request.headers.get("x-forwarded-proto", request.url.scheme).split(",")[0].strip()
+    host = request.headers.get("x-forwarded-host") or request.headers.get("host")
+    if not host:
+        return str(request.base_url).rstrip("/")
+    return f"{proto}://{host.split(',')[0].strip()}".rstrip("/")
 
 
 app = create_app()
