@@ -12,6 +12,32 @@ serviceAccount:
   annotations: {}
   name: ""
 
+secrets:
+  create: true
+  existingSecret: ""
+  external:
+    enabled: false
+    refreshInterval: 1h
+    secretStore:
+      name: prizma-secret-store
+      kind: ClusterSecretStore
+    remoteRefs:
+      minioRootUser:
+        key: prizma/minio-root-user
+        property: ""
+      minioRootPassword:
+        key: prizma/minio-root-password
+        property: ""
+      rabbitmqUsername:
+        key: prizma/rabbitmq-username
+        property: ""
+      rabbitmqPassword:
+        key: prizma/rabbitmq-password
+        property: ""
+      apiKey:
+        key: prizma/api-key
+        property: ""
+
 app:
   baseUrl: https://prizma.example.com
   environment: production

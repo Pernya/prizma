@@ -8,6 +8,13 @@ Run the full local pipeline:
 make mlops
 ```
 
+Install optional DVC/MLflow tooling when you need real artifact tracking or registry logging:
+
+```bash
+pip install -e ".[mlops]"
+dvc repro
+```
+
 The pipeline creates:
 
 - synthetic golden-set inputs under `data/golden/input`
@@ -15,4 +22,5 @@ The pipeline creates:
 - benchmark and drift reports under `reports/mlops`
 - model card under `docs/mlops/model-card.md`
 
-The generated data/model/report directories are suitable for DVC tracking in a real Git remote.
+The generated data/model/report directories are ignored by Git and intended to be tracked by DVC
+remote storage in a real Git remote.

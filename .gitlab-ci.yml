@@ -26,7 +26,10 @@ software:lint:
   image: python:3.12-slim
   rules:
     - changes:
+        - .gitlab-ci.yml
+        - Makefile
         - pyproject.toml
+        - scripts/**/*
         - src/**/*
         - tests/**/*
   before_script:
@@ -54,7 +57,6 @@ software:dependency-scan:
   rules:
     - changes:
         - pyproject.toml
-        - src/**/*
   before_script:
     - pip install -e .[dev]
   script:
@@ -116,6 +118,7 @@ infra:helm-lint:
     - helm template prizma charts/prizma -f charts/prizma/values-eks.yaml > rendered-eks.yaml
     - helm template prizma charts/prizma -f charts/prizma/values-regcloud.yaml > rendered-regcloud.yaml
     - helm template prizma charts/prizma --set rollouts.enabled=true --set serviceMonitor.enabled=true > rendered-rollout.yaml
+    - helm template prizma charts/prizma --set secrets.external.enabled=true --set secrets.create=false --set secrets.existingSecret=prizma-runtime-overrides > rendered-external-secret.yaml
   artifacts:
     paths:
       - rendered-dev.yaml
@@ -123,6 +126,7 @@ infra:helm-lint:
       - rendered-eks.yaml
       - rendered-regcloud.yaml
       - rendered-rollout.yaml
+      - rendered-external-secret.yaml
 
 infra:kubeconform:
   stage: validate
@@ -135,7 +139,7 @@ infra:kubeconform:
         - deploy/**/*
         - charts/**/*
   script:
-    - kubeconform -strict -ignore-missing-schemas -summary rendered-dev.yaml rendered-prod.yaml rendered-eks.yaml rendered-regcloud.yaml rendered-rollout.yaml deploy/k8s/observability/*.yaml deploy/argocd/*.yaml
+    - kubeconform -strict -ignore-missing-schemas -summary rendered-dev.yaml rendered-prod.yaml rendered-eks.yaml rendered-regcloud.yaml rendered-rollout.yaml rendered-external-secret.yaml deploy/k8s/observability/*.yaml deploy/argocd/*.yaml
 
 software:build-image:
   stage: build
@@ -164,6 +168,9 @@ security:container-scan:
     entrypoint: [""]
   needs:
     - software:build-image
+  variables:
+    TRIVY_USERNAME: "$CI_REGISTRY_USER"
+    TRIVY_PASSWORD: "$CI_REGISTRY_PASSWORD"
   rules:
     - if: $CI_COMMIT_BRANCH
   script:

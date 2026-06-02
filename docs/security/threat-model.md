@@ -25,7 +25,7 @@
 - Upload size limit.
 - Optional `X-API-Key` gate for job creation.
 - Secret detection and dependency scanning jobs.
-- Kubernetes Secrets or external secret manager for production values.
+- Kubernetes existing Secret or ExternalSecret integration for production values.
 - Retention cleanup job for expired images and job metadata.
 - Canary analysis before production rollout.
 
@@ -33,4 +33,3 @@
 
 - Add user authentication when the product moves beyond public demo.
 - Add malware scanning for uploads if the service stores user content at scale.
-- Move chart secrets to External Secrets or cloud secret manager.

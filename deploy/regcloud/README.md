@@ -99,9 +99,13 @@ Install an nginx ingress controller and cert-manager in the cluster, then deploy
 
 ```bash
 kubectl apply -f deploy/regcloud/namespace.yaml
+kubectl apply -f deploy/regcloud/prizma-secrets.example.yaml
 helm upgrade --install prizma charts/prizma \
   --namespace prizma \
   -f charts/prizma/values-regcloud.yaml
 ```
+
+Replace the placeholder values in `deploy/regcloud/prizma-secrets.example.yaml` before production.
+Leave `api-key` empty for a public demo; set it only if the caller can send `X-API-Key`.
 
 This profile keeps API and worker replicas at `1` because the current file-based job repository needs shared state. For horizontal scaling, switch `sharedState` to an RWX storage class or replace the job repository with a database-backed implementation.

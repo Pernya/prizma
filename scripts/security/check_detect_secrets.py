@@ -13,7 +13,9 @@ EXCLUDE_FILES = (
 
 def main() -> None:
     command = [
-        "detect-secrets",
+        sys.executable,
+        "-m",
+        "detect_secrets",
         "scan",
         "--all-files",
         "--disable-plugin",

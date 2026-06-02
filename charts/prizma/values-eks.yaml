@@ -8,6 +8,10 @@ app:
   storageBackend: s3
   inferenceBackend: triton
 
+secrets:
+  create: false
+  existingSecret: prizma-runtime-overrides
+
 api:
   replicaCount: 2
   ingress:

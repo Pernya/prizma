@@ -47,7 +47,7 @@ app.kubernetes.io/component: {{ $component }}
 {{- end -}}
 
 {{- define "prizma.secretName" -}}
-{{ include "prizma.fullname" . }}-secrets
+{{- default (printf "%s-secrets" (include "prizma.fullname" .)) .Values.secrets.existingSecret -}}
 {{- end -}}
 
 {{- define "prizma.apiFullname" -}}

@@ -25,8 +25,7 @@ the production architecture.
 
 - Golden-set samples: `8`
 - Success rate: `1.0000`
-- Mean latency: `0.22 ms`
-- P95 latency: `0.33 ms`
+- Latency report: `reports/mlops/benchmark.json`
 - Gate passed: `True`
 - P95 threshold: `2500 ms`
 

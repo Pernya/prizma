@@ -93,6 +93,7 @@ PRIZMA_INFERENCE_BACKEND=triton docker compose -p prizma --profile triton up -d 
 - [deploy/eks](/Users/sanalpernyaev/Downloads/Новая%20папка/Разработка%20ПО/deploy/eks)
 - [deploy/regcloud](/Users/sanalpernyaev/Downloads/Новая%20папка/Разработка%20ПО/deploy/regcloud)
 - [.gitlab-ci.yml](/Users/sanalpernyaev/Downloads/Новая%20папка/Разработка%20ПО/.gitlab-ci.yml)
+- [docs/git/remote-setup.md](/Users/sanalpernyaev/Downloads/Новая%20папка/Разработка%20ПО/docs/git/remote-setup.md)
 
 ## CI/CD и GitOps
 
@@ -126,6 +127,7 @@ Helm chart поднимает:
 - HPA и `ServiceMonitor`
 - optional Argo Rollouts canary with Prometheus analysis
 - artifact retention CronJob
+- runtime secret integration through generated Secret, existing Secret or ExternalSecret
 
 Отдельно есть минимальные Kubernetes-манифесты для Prometheus и Grafana с:
 
@@ -169,7 +171,7 @@ make kube-validate
 
 - shared state хранится в файловом job repository, поэтому в managed Kubernetes нужен RWX storage
 - Triton model repository сейчас scaffold, а не production-модель
-- chart secrets должны быть вынесены во внешний secret manager или External Secrets перед production
+- production profiles expect an existing `prizma-runtime-overrides` Secret or ExternalSecret-backed Secret
 - MLflow logging в baseline включается автоматически только если пакет `mlflow` установлен в среде
 
 Это production-oriented baseline, который покрывает backend, broker/storage, CI/CD, MLOps governance, observability и Kubernetes-контур из кейса.

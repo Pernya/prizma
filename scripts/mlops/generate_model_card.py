@@ -32,7 +32,6 @@ def _render(
     benchmark: dict[str, object],
     drift: dict[str, object],
 ) -> str:
-    latency = benchmark["latency_ms"]
     return f"""# Prizma Stylizer Model Card
 
 ## Identity
@@ -57,8 +56,7 @@ the production architecture.
 
 - Golden-set samples: `{benchmark["samples"]}`
 - Success rate: `{benchmark["success_rate"]:.4f}`
-- Mean latency: `{latency["mean"]:.2f} ms`
-- P95 latency: `{latency["p95"]:.2f} ms`
+- Latency report: `reports/mlops/benchmark.json`
 - Gate passed: `{benchmark["passed"]}`
 - P95 threshold: `{params["evaluation"]["max_p95_latency_ms"]} ms`
 

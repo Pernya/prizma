@@ -5,6 +5,10 @@ app:
   baseUrl: https://prizma.pernyaev.ru
   environment: production
 
+secrets:
+  create: false
+  existingSecret: prizma-runtime-overrides
+
 serviceAccount:
   annotations: {}
 
