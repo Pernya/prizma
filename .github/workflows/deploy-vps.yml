@@ -75,7 +75,10 @@ jobs:
             fi
 
             $COMPOSE version
-            $COMPOSE -f docker-compose.frontend-server.yml -p prizma-frontend up -d
+            $COMPOSE -f docker-compose.frontend-server.yml -p prizma-frontend down --remove-orphans || true
+            docker rm -f prizma-frontend_frontend_1 2>/dev/null || true
+            docker rm -f 1651ab2ba2cf_prizma-frontend_frontend_1 2>/dev/null || true
+            $COMPOSE -f docker-compose.frontend-server.yml -p prizma-frontend up -d --force-recreate
             docker ps --filter name=prizma-frontend
             curl -fsS http://127.0.0.1/ >/dev/null
           REMOTE
