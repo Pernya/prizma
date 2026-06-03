@@ -85,6 +85,10 @@ On the public Reg.ru server, run only the frontend nginx:
 docker compose -f docker-compose.frontend-server.yml -p prizma-frontend up -d
 ```
 
+GitHub Actions can deploy this mode automatically through `.github/workflows/deploy-vps.yml`.
+Configure GitHub Environment `vps` with `VPS_HOST`, `VPS_PORT`, `VPS_USER`, `VPS_SSH_KEY` and
+`VPS_APP_DIR`, then run `Actions -> Deploy VPS Frontend`.
+
 Check:
 
 ```bash

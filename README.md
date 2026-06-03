@@ -95,6 +95,7 @@ PRIZMA_INFERENCE_BACKEND=triton docker compose -p prizma --profile triton up -d 
 - [.gitlab-ci.yml](/Users/sanalpernyaev/Downloads/Новая%20папка/Разработка%20ПО/.gitlab-ci.yml)
 - [.github/workflows/ci.yml](/Users/sanalpernyaev/Downloads/Новая%20папка/Разработка%20ПО/.github/workflows/ci.yml)
 - [.github/workflows/deploy.yml](/Users/sanalpernyaev/Downloads/Новая%20папка/Разработка%20ПО/.github/workflows/deploy.yml)
+- [.github/workflows/deploy-vps.yml](/Users/sanalpernyaev/Downloads/Новая%20папка/Разработка%20ПО/.github/workflows/deploy-vps.yml)
 - [docs/git/remote-setup.md](/Users/sanalpernyaev/Downloads/Новая%20папка/Разработка%20ПО/docs/git/remote-setup.md)
 
 ## CI/CD и GitOps
@@ -115,6 +116,10 @@ GitHub Actions запускает базовый CI без GitLab shared runners
 
 GitHub CD запускается вручную через `Actions -> Deploy -> Run workflow`. Для этого нужно
 добавить environment secret `KUBECONFIG_B64` в GitHub Environment `dev`, `regcloud` или `prod`.
+
+Для текущего VPS-режима есть отдельный CD: `Actions -> Deploy VPS Frontend`.
+Он доставляет `web/`, nginx-конфиг и `docker-compose.frontend-server.yml` на VPS по SSH и
+перезапускает compose stack.
 
 GitLab CI/CD остается подготовленным для GitLab runners и deploy jobs. CD можно вести двумя путями:
 

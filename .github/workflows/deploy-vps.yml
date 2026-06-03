@@ -1,0 +1,68 @@
+name: Deploy VPS Frontend
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - web/**
+      - deploy/regcloud/nginx.frontend-local-backend.conf
+      - docker-compose.frontend-server.yml
+      - .github/workflows/deploy-vps.yml
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy frontend compose stack
+    runs-on: ubuntu-latest
+    environment: vps
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure SSH
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_PORT: ${{ secrets.VPS_PORT }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+        run: |
+          test -n "$VPS_HOST"
+          test -n "$VPS_USER"
+          test -n "$VPS_SSH_KEY"
+          mkdir -p ~/.ssh
+          printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          ssh-keyscan -p "${VPS_PORT:-22}" "$VPS_HOST" >> ~/.ssh/known_hosts
+
+      - name: Upload frontend bundle
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_PORT: ${{ secrets.VPS_PORT }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_APP_DIR: ${{ secrets.VPS_APP_DIR }}
+        run: |
+          test -n "$VPS_APP_DIR"
+          tar -czf /tmp/prizma-frontend.tar.gz \
+            docker-compose.frontend-server.yml \
+            web \
+            deploy/regcloud/nginx.frontend-local-backend.conf
+          ssh -i ~/.ssh/id_deploy -p "${VPS_PORT:-22}" "$VPS_USER@$VPS_HOST" "mkdir -p '$VPS_APP_DIR'"
+          cat /tmp/prizma-frontend.tar.gz | ssh -i ~/.ssh/id_deploy -p "${VPS_PORT:-22}" "$VPS_USER@$VPS_HOST" "tar -xzf - -C '$VPS_APP_DIR'"
+
+      - name: Restart compose stack
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_PORT: ${{ secrets.VPS_PORT }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_APP_DIR: ${{ secrets.VPS_APP_DIR }}
+        run: |
+          ssh -i ~/.ssh/id_deploy -p "${VPS_PORT:-22}" "$VPS_USER@$VPS_HOST" "
+            set -e
+            cd '$VPS_APP_DIR'
+            docker compose -f docker-compose.frontend-server.yml -p prizma-frontend up -d
+            docker ps --filter name=prizma-frontend
+            curl -fsS http://127.0.0.1/ >/dev/null
+          "

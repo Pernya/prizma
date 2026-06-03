@@ -61,3 +61,27 @@ Run deployment in GitHub:
 ```text
 Actions -> Deploy -> Run workflow
 ```
+
+## GitHub Actions VPS CD
+
+The current public server mode uses Docker Compose on the VPS and does not require Kubernetes.
+
+Workflow:
+
+```text
+Actions -> Deploy VPS Frontend -> Run workflow
+```
+
+Create a GitHub Environment named `vps`, then add these environment secrets:
+
+- `VPS_HOST`: public server IP or hostname, for example `194.226.142.176`
+- `VPS_PORT`: SSH port, usually `22`
+- `VPS_USER`: SSH user, for example `root`
+- `VPS_SSH_KEY`: private SSH key allowed to connect to the VPS
+- `VPS_APP_DIR`: target directory, for example `/opt/prizma/frontend`
+
+The workflow uploads only the public frontend bundle and runs:
+
+```bash
+docker compose -f docker-compose.frontend-server.yml -p prizma-frontend up -d
+```
