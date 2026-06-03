@@ -59,10 +59,22 @@ jobs:
           VPS_USER: ${{ secrets.VPS_USER }}
           VPS_APP_DIR: ${{ secrets.VPS_APP_DIR }}
         run: |
-          ssh -i ~/.ssh/id_deploy -p "${VPS_PORT:-22}" "$VPS_USER@$VPS_HOST" "
+          ssh -i ~/.ssh/id_deploy -p "${VPS_PORT:-22}" "$VPS_USER@$VPS_HOST" '
             set -e
-            cd '$VPS_APP_DIR'
-            docker compose -f docker-compose.frontend-server.yml -p prizma-frontend up -d
+            cd '"'"'$VPS_APP_DIR'"'"'
+
+            docker --version
+            if docker compose version >/dev/null 2>&1; then
+              COMPOSE="docker compose"
+            elif command -v docker-compose >/dev/null 2>&1; then
+              COMPOSE="docker-compose"
+            else
+              echo "Neither docker compose plugin nor docker-compose is installed." >&2
+              exit 127
+            fi
+
+            $COMPOSE version
+            $COMPOSE -f docker-compose.frontend-server.yml -p prizma-frontend up -d
             docker ps --filter name=prizma-frontend
             curl -fsS http://127.0.0.1/ >/dev/null
-          "
+          '
