@@ -16,6 +16,8 @@ const setStatus = (message, state = "idle") => {
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+const MAX_CLIENT_UPLOAD_BYTES = 2 * 1024 * 1024;
+const MAX_CLIENT_IMAGE_SIDE = 1600;
 const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
 const toLocalApiUrl = (url) => {
@@ -85,6 +87,43 @@ fileInput.addEventListener("change", () => {
   fileName.textContent = fileInput.files[0]?.name || "PNG, JPEG или WebP до 10 МБ";
 });
 
+const canvasToBlob = (canvas, type, quality) =>
+  new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => {
+        if (blob) {
+          resolve(blob);
+          return;
+        }
+        reject(new Error("Не удалось подготовить изображение"));
+      },
+      type,
+      quality,
+    );
+  });
+
+const prepareUploadFile = async (file) => {
+  if (file.size <= MAX_CLIENT_UPLOAD_BYTES) {
+    return file;
+  }
+
+  const bitmap = await createImageBitmap(file);
+  const scale = Math.min(1, MAX_CLIENT_IMAGE_SIDE / Math.max(bitmap.width, bitmap.height));
+  const width = Math.max(1, Math.round(bitmap.width * scale));
+  const height = Math.max(1, Math.round(bitmap.height * scale));
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  canvas.getContext("2d").drawImage(bitmap, 0, 0, width, height);
+  bitmap.close?.();
+
+  const blob = await canvasToBlob(canvas, "image/jpeg", 0.86);
+  const preparedName = `${file.name.replace(/\.[^.]+$/, "") || "image"}-prepared.jpg`;
+  return new File([blob], preparedName, {
+    type: "image/jpeg",
+  });
+};
+
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
   submitButton.disabled = true;
@@ -103,8 +142,13 @@ form.addEventListener("submit", async (event) => {
       throw new Error("Файл больше 10 МБ");
     }
 
+    setStatus("Подготавливаю изображение...", "ready");
+    const uploadFile = await prepareUploadFile(selectedFile);
+    const formData = new FormData();
+    formData.set("style", styleSelect.value);
+    formData.set("file", uploadFile, uploadFile.name);
+
     setStatus("Отправляю изображение...", "ready");
-    const formData = new FormData(form);
     const response = await fetch("/api/v1/jobs", {
       method: "POST",
       body: formData,
