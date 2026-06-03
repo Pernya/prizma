@@ -25,6 +25,9 @@ Production-oriented baseline для кейса Prizma из документа:
 - `GET /api/v1/jobs/{job_id}/result` для получения результата через API
 - `GET /metrics` для Prometheus
 
+Публичный frontend поддерживает mobile/PWA-like режим, загрузку изображения, выбор стиля,
+просмотр результата, скачивание и системный share/copy fallback.
+
 Доступны два режима inference:
 
 - `local`: стилизация через `Pillow`
@@ -161,7 +164,8 @@ Helm chart поднимает:
 make mlops
 ```
 
-Он генерирует synthetic golden set, metadata baseline, benchmark, drift report и model card:
+Он генерирует synthetic golden set, dataset validation report, metadata baseline, benchmark,
+drift report и model card:
 
 - [dvc.yaml](/Users/sanalpernyaev/Downloads/Новая%20папка/Разработка%20ПО/dvc.yaml)
 - [params.yaml](/Users/sanalpernyaev/Downloads/Новая%20папка/Разработка%20ПО/params.yaml)
@@ -170,6 +174,7 @@ make mlops
 Эксплуатационные документы:
 
 - [docs/security/threat-model.md](/Users/sanalpernyaev/Downloads/Новая%20папка/Разработка%20ПО/docs/security/threat-model.md)
+- [docs/sre/slo.md](/Users/sanalpernyaev/Downloads/Новая%20папка/Разработка%20ПО/docs/sre/slo.md)
 - [docs/runbooks/retraining.md](/Users/sanalpernyaev/Downloads/Новая%20папка/Разработка%20ПО/docs/runbooks/retraining.md)
 - [docs/runbooks/rollback.md](/Users/sanalpernyaev/Downloads/Новая%20папка/Разработка%20ПО/docs/runbooks/rollback.md)
 - [docs/runbooks/incident-response.md](/Users/sanalpernyaev/Downloads/Новая%20папка/Разработка%20ПО/docs/runbooks/incident-response.md)

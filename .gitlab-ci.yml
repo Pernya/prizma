@@ -37,6 +37,8 @@ software:lint:
   script:
     - ruff check src tests scripts
     - ruff format --check src tests scripts
+    - make contract
+    - git diff --exit-code docs/api/openapi.json
 
 software:test:
   stage: validate

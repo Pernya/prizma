@@ -24,15 +24,16 @@ Acceptance criteria:
 - Failed jobs expose a user-readable error.
 - Succeeded jobs expose a public result URL.
 
-### Story: Get result
+### Story: Save or share result
 
-As a user, I can download the processed PNG result.
+As a user, I can download or share the processed PNG result.
 
 Acceptance criteria:
 
 - Result endpoint returns `409` until the job succeeds.
 - Result endpoint returns `image/png`.
 - Public frontend can load the result through the configured API/proxy route.
+- Public frontend exposes download and share/copy controls after successful processing.
 
 ## Epic: MLOps Governance
 

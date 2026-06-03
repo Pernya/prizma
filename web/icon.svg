@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title id="title">Prizma</title>
+  <rect width="512" height="512" rx="96" fill="#0f7b63"/>
+  <path fill="#f6f4ed" d="M134 384V128h120c61 0 101 35 101 89 0 55-40 90-101 90h-54v77h-66Zm66-134h47c27 0 43-12 43-33s-16-33-43-33h-47v66Z"/>
+  <path fill="#dfe8e0" d="M331 384h-75l122-256h74L331 384Z" opacity=".86"/>
+</svg>

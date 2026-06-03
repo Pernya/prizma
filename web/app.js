@@ -7,6 +7,11 @@ const statusDot = document.querySelector("#status-dot");
 const statusText = document.querySelector("#status-text");
 const resultImage = document.querySelector("#result-image");
 const emptyState = document.querySelector("#empty-state");
+const resultActions = document.querySelector("#result-actions");
+const downloadLink = document.querySelector("#download-link");
+const shareButton = document.querySelector("#share-button");
+
+let currentResultUrl = null;
 
 const setStatus = (message, state = "idle") => {
   statusText.textContent = message;
@@ -102,26 +107,57 @@ const canvasToBlob = (canvas, type, quality) =>
     );
   });
 
+const loadDrawableImage = async (file) => {
+  if ("createImageBitmap" in window) {
+    const bitmap = await createImageBitmap(file);
+    return {
+      source: bitmap,
+      width: bitmap.width,
+      height: bitmap.height,
+      cleanup: () => bitmap.close?.(),
+    };
+  }
+
+  const objectUrl = URL.createObjectURL(file);
+  const image = new Image();
+  image.decoding = "async";
+  await new Promise((resolve, reject) => {
+    image.addEventListener("load", resolve, { once: true });
+    image.addEventListener("error", () => reject(new Error("Не удалось прочитать изображение")), { once: true });
+    image.src = objectUrl;
+  });
+
+  return {
+    source: image,
+    width: image.naturalWidth,
+    height: image.naturalHeight,
+    cleanup: () => URL.revokeObjectURL(objectUrl),
+  };
+};
+
 const prepareUploadFile = async (file) => {
   if (file.size <= MAX_CLIENT_UPLOAD_BYTES) {
     return file;
   }
 
-  const bitmap = await createImageBitmap(file);
-  const scale = Math.min(1, MAX_CLIENT_IMAGE_SIDE / Math.max(bitmap.width, bitmap.height));
-  const width = Math.max(1, Math.round(bitmap.width * scale));
-  const height = Math.max(1, Math.round(bitmap.height * scale));
-  const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
-  canvas.getContext("2d").drawImage(bitmap, 0, 0, width, height);
-  bitmap.close?.();
+  const image = await loadDrawableImage(file);
+  try {
+    const scale = Math.min(1, MAX_CLIENT_IMAGE_SIDE / Math.max(image.width, image.height));
+    const width = Math.max(1, Math.round(image.width * scale));
+    const height = Math.max(1, Math.round(image.height * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    canvas.getContext("2d").drawImage(image.source, 0, 0, width, height);
 
-  const blob = await canvasToBlob(canvas, "image/jpeg", 0.86);
-  const preparedName = `${file.name.replace(/\.[^.]+$/, "") || "image"}-prepared.jpg`;
-  return new File([blob], preparedName, {
-    type: "image/jpeg",
-  });
+    const blob = await canvasToBlob(canvas, "image/jpeg", 0.86);
+    const preparedName = `${file.name.replace(/\.[^.]+$/, "") || "image"}-prepared.jpg`;
+    return new File([blob], preparedName, {
+      type: "image/jpeg",
+    });
+  } finally {
+    image.cleanup();
+  }
 };
 
 form.addEventListener("submit", async (event) => {
@@ -129,6 +165,8 @@ form.addEventListener("submit", async (event) => {
   submitButton.disabled = true;
   resultImage.hidden = true;
   emptyState.hidden = false;
+  resultActions.hidden = true;
+  currentResultUrl = null;
 
   try {
     const selectedFile = fileInput.files[0];
@@ -160,14 +198,44 @@ form.addEventListener("submit", async (event) => {
 
     const created = await response.json();
     const job = await waitForJob(created.status_url);
-    resultImage.src = `${toLocalApiUrl(job.result_url)}?t=${Date.now()}`;
+    currentResultUrl = `${toLocalApiUrl(job.result_url)}?t=${Date.now()}`;
+    resultImage.src = currentResultUrl;
+    downloadLink.href = currentResultUrl;
+    downloadLink.download = `prizma-${job.job_id}.png`;
     resultImage.hidden = false;
     emptyState.hidden = true;
+    resultActions.hidden = false;
     setStatus("Готово", "ready");
   } catch (error) {
     setStatus(error.message, "error");
   } finally {
     submitButton.disabled = false;
+  }
+});
+
+shareButton.addEventListener("click", async () => {
+  if (!currentResultUrl) {
+    return;
+  }
+
+  const absoluteUrl = new URL(currentResultUrl, window.location.origin).href;
+  try {
+    if (navigator.share) {
+      await navigator.share({
+        title: "Prizma result",
+        text: "Результат обработки в Prizma",
+        url: absoluteUrl,
+      });
+      return;
+    }
+
+    await navigator.clipboard.writeText(absoluteUrl);
+    setStatus("Ссылка на результат скопирована", "ready");
+  } catch (error) {
+    const errorName = error instanceof Error ? error.name : "";
+    if (errorName !== "AbortError") {
+      setStatus("Не удалось поделиться результатом", "error");
+    }
   }
 });
 

@@ -16,6 +16,15 @@ stages:
     outs:
       - models/prizma_stylizer/metadata.json
 
+  validate_dataset:
+    cmd: PYTHONPATH=src python scripts/mlops/validate_dataset.py --params params.yaml --input data/golden/input --output reports/mlops/data-validation.json
+    deps:
+      - scripts/mlops/validate_dataset.py
+      - data/golden/input
+      - params.yaml
+    outs:
+      - reports/mlops/data-validation.json
+
   evaluate_model:
     cmd: PYTHONPATH=src python scripts/mlops/evaluate_model.py --params params.yaml --input data/golden/input --model models/prizma_stylizer/metadata.json --output reports/mlops/benchmark.json
     deps:
@@ -23,6 +32,7 @@ stages:
       - src/prizma_backend/inference.py
       - data/golden/input
       - models/prizma_stylizer/metadata.json
+      - reports/mlops/data-validation.json
       - params.yaml
     outs:
       - reports/mlops/benchmark.json

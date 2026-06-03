@@ -18,6 +18,7 @@ dvc repro
 The pipeline creates:
 
 - synthetic golden-set inputs under `data/golden/input`
+- dataset validation report under `reports/mlops/data-validation.json`
 - baseline model metadata under `models/prizma_stylizer/metadata.json`
 - benchmark and drift reports under `reports/mlops`
 - model card under `docs/mlops/model-card.md`

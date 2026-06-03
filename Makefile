@@ -6,7 +6,7 @@ HELM ?= ./.tools/helm
 KUBECONFORM ?= ./.tools/kubeconform
 KUBE_VALIDATE_DIR ?= /tmp/prizma-kubeconform
 
-.PHONY: install run test lint security mlops smoke compose-up compose-down helm-template kube-validate cleanup
+.PHONY: install run test lint security contract mlops smoke compose-up compose-down helm-template kube-validate cleanup
 
 install:
 	$(PYTHON) -m venv .venv
@@ -27,8 +27,12 @@ security:
 	$(RUN_PYTHON) -m bandit -r src scripts -q
 	$(RUN_PYTHON) scripts/security/check_detect_secrets.py
 
+contract:
+	PYTHONPATH=$(PYTHONPATH) $(RUN_PYTHON) scripts/contracts/export_openapi.py --output docs/api/openapi.json
+
 mlops:
 	PYTHONPATH=$(PYTHONPATH) $(RUN_PYTHON) scripts/mlops/prepare_golden_set.py --params params.yaml --output data/golden/input
+	PYTHONPATH=$(PYTHONPATH) $(RUN_PYTHON) scripts/mlops/validate_dataset.py --params params.yaml --input data/golden/input --output reports/mlops/data-validation.json
 	PYTHONPATH=$(PYTHONPATH) $(RUN_PYTHON) scripts/mlops/train_baseline.py --params params.yaml --output models/prizma_stylizer/metadata.json
 	PYTHONPATH=$(PYTHONPATH) $(RUN_PYTHON) scripts/mlops/evaluate_model.py --params params.yaml --input data/golden/input --model models/prizma_stylizer/metadata.json --output reports/mlops/benchmark.json
 	PYTHONPATH=$(PYTHONPATH) $(RUN_PYTHON) scripts/mlops/drift_report.py --params params.yaml --baseline data/golden/input --current data/monitoring/input --output reports/mlops/drift.json

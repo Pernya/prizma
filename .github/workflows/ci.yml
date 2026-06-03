@@ -39,6 +39,9 @@ jobs:
       - name: Security gates
         run: make security
 
+      - name: API contract is current
+        run: make contract && git diff --exit-code docs/api/openapi.json
+
   mlops:
     name: MLOps gates
     runs-on: ubuntu-latest

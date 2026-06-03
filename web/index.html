@@ -4,6 +4,9 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Prizma</title>
+    <meta name="theme-color" content="#0f7b63" />
+    <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+    <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
@@ -40,10 +43,14 @@
             <p id="empty-state">Результат появится здесь после обработки.</p>
             <img id="result-image" alt="Обработанное изображение" hidden />
           </div>
+          <div id="result-actions" class="result-actions" hidden>
+            <a id="download-link" class="secondary-action" href="#" download="prizma-result.png">Скачать результат</a>
+            <button id="share-button" class="secondary-action" type="button">Поделиться</button>
+          </div>
         </section>
       </section>
     </main>
 
-    <script src="/app.js?v=20260603-1" type="module"></script>
+    <script src="/app.js?v=20260603-2" type="module"></script>
   </body>
 </html>

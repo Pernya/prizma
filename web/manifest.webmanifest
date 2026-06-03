@@ -1,0 +1,18 @@
+{
+  "name": "Prizma Image Stylization",
+  "short_name": "Prizma",
+  "description": "Upload an image, choose a style, process it, then download or share the result.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f6f4ed",
+  "theme_color": "#0f7b63",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
