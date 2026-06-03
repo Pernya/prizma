@@ -7,7 +7,7 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "Prizma backend returns too many 5xx responses"
+          summary: "Бэкенд Prizma возвращает слишком много 5xx ответов"
 
       - alert: PrizmaHighP95Latency
         expr: histogram_quantile(0.95, sum by (le) (rate(prizma_http_request_duration_seconds_bucket{path="/api/v1/jobs"}[5m]))) > 0.3
@@ -15,7 +15,7 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "Prizma job creation API exceeds latency budget"
+          summary: "API создания задач Prizma превышает бюджет задержки"
 
       - alert: PrizmaHighJobP95Duration
         expr: histogram_quantile(0.95, sum by (le) (rate(prizma_job_duration_seconds_bucket[5m]))) > 2.5
@@ -23,7 +23,7 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "Prizma image processing exceeds p95 duration SLO"
+          summary: "Обработка изображений Prizma превышает p95 SLO"
 
       - alert: PrizmaHighJobFailureRate
         expr: sum(rate(prizma_jobs_total{result="error"}[5m])) / clamp_min(sum(rate(prizma_jobs_total[5m])), 1) > 0.01
@@ -31,7 +31,7 @@ groups:
         labels:
           severity: critical
         annotations:
-          summary: "Prizma worker job failure rate exceeds SLO"
+          summary: "Доля ошибочных задач воркера Prizma превышает SLO"
 
       - alert: PrizmaJobsStuck
         expr: prizma_active_jobs > 10
@@ -39,4 +39,4 @@ groups:
         labels:
           severity: critical
         annotations:
-          summary: "Too many active Prizma jobs for too long"
+          summary: "Слишком много активных задач Prizma в течение длительного времени"

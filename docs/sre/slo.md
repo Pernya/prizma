@@ -1,52 +1,75 @@
-# Prizma SLO and Error Budget
+# SLI/SLO/SLA и бюджет ошибок Prizma
 
-This document turns the case-report SRE targets into explicit, checkable operating goals.
+Документ переводит SRE-цели из отчета по кейсу в явные, проверяемые эксплуатационные
+цели для платформы Prizma.
 
-## Scope
+## Область действия
 
-The SLOs cover the public Prizma image-stylization flow:
+SLO покрывают публичный пользовательский сценарий стилизации изображений:
 
-- User opens the public frontend.
-- User uploads an image and creates a processing job.
-- Backend accepts the job, dispatches it to worker/inference, stores the artifact, and returns the result URL.
-- User downloads or shares the processed result.
+- Пользователь открывает публичный frontend.
+- Пользователь загружает изображение и создает задачу обработки.
+- Backend принимает задачу, передает ее в worker/inference-контур, сохраняет артефакт и возвращает URL результата.
+- Пользователь скачивает или отправляет результат через share/copy flow.
 
-## Service Level Objectives
+## SLI и SLO
 
-| Area | SLI | SLO | Primary signal |
+| Область | SLI | SLO | Основной сигнал |
 | --- | --- | --- | --- |
-| API availability | Successful API requests / all API requests | >= 99.9% monthly | `prizma_http_requests_total` |
-| API error rate | 5xx API requests / all API requests | < 1% over 10 minutes | `prizma_http_requests_total{status=~"5.."}` |
-| Job creation latency | p95 latency for `POST /api/v1/jobs` | <= 300 ms over 10 minutes | `prizma_http_request_duration_seconds_bucket{path="/api/v1/jobs"}` |
-| Processing latency | p95 end-to-end job duration | <= 2.5 s over 10 minutes | `prizma_job_duration_seconds_bucket` |
-| Processing reliability | Failed jobs / all completed jobs | < 1% over 10 minutes | `prizma_jobs_total{result="error"}` |
-| Queue pressure | Active jobs waiting or processing | <= 10 active jobs for 10 minutes | `prizma_active_jobs` |
-| Rollback time | Time from bad deploy detection to previous stable version | <= 15 minutes | Rollback runbook timestamp |
-| Model quality gate | Benchmark success rate and p95 latency | Must pass before release | `reports/mlops/benchmark.json` |
-| Data quality gate | Dataset validity, duplicates, minimum sample count | Must pass before training/evaluation | `reports/mlops/data-validation.json` |
+| Доступность API | Успешные API-запросы / все API-запросы | >= 99,9% за календарный месяц | `prizma_http_requests_total` |
+| Ошибки API | 5xx API-запросы / все API-запросы | < 1% за 10 минут | `prizma_http_requests_total{status=~"5.."}` |
+| Задержка создания задачи | p95 latency для `POST /api/v1/jobs` | <= 300 мс за 10 минут | `prizma_http_request_duration_seconds_bucket{path="/api/v1/jobs"}` |
+| Задержка обработки | p95 end-to-end длительности задачи | <= 2,5 с за 10 минут | `prizma_job_duration_seconds_bucket` |
+| Надежность обработки | Ошибочные задачи / все завершенные задачи | < 1% за 10 минут | `prizma_jobs_total{result="error"}` |
+| Давление на очередь | Активные задачи в ожидании или обработке | <= 10 активных задач в течение 10 минут | `prizma_active_jobs` |
+| Время rollback | Время от обнаружения плохого deploy до возврата на стабильную версию | <= 15 минут | Временные отметки в rollback runbook |
+| Gate качества модели | Success rate benchmark и p95 latency | Должен проходить перед релизом | `reports/mlops/benchmark.json` |
+| Gate качества данных | Валидность датасета, дубликаты, минимальное число samples | Должен проходить перед train/evaluation | `reports/mlops/data-validation.json` |
 
-## Error Budget Policy
+## SLA
 
-- If API availability drops below 99.9% for the current month, feature deploys stop until the rollback or remediation is completed.
-- If any Prometheus SLO alert fires for more than 10 minutes, the on-call owner follows `docs/runbooks/incident-response.md`.
-- If rollback is required, use `docs/runbooks/rollback.md` and record detection, decision, and recovery timestamps.
-- If model or data gates fail, block promotion and follow `docs/runbooks/retraining.md`.
+Для MVP публичный коммерческий SLA не заявлен: сервис не имеет внешнего договора с
+финансовой компенсацией за недоступность.
 
-## Prometheus Alerts
+Внутренний операционный ориентир для команды:
 
-The alert implementation is stored in `observability/prometheus/prizma-rules.yml`.
+- целевая доступность API: 99,9% в месяц;
+- целевое время rollback: не более 15 минут после принятия решения о rollback;
+- нарушение SLO считается инцидентом и требует записи в incident/postmortem процесс.
 
-Current alert coverage:
+Если сервис переводится в коммерческий режим, SLA должен быть оформлен отдельным документом
+и не должен обещать больше, чем реально подтверждено SLO, мониторингом и процессом on-call.
 
-- `PrizmaHighErrorRate` maps to API error-rate SLO.
-- `PrizmaHighP95Latency` maps to job creation latency SLO.
-- `PrizmaHighJobP95Duration` maps to processing latency SLO.
-- `PrizmaHighJobFailureRate` maps to processing reliability SLO.
-- `PrizmaJobsStuck` maps to queue pressure SLO.
+## Бюджет ошибок
 
-## Release Gate
+При SLO доступности 99,9% месячный бюджет ошибок составляет примерно:
 
-Before promoting a release:
+- 43 минуты недоступности за 30 календарных дней;
+- 10 минут 5xx/error-rate нарушения уже считаются alert-событием и требуют реакции;
+- исчерпание бюджета ошибок блокирует feature deploy до восстановления стабильности.
+
+Политика использования бюджета ошибок:
+
+- Если доступность API опускается ниже 99,9% за текущий месяц, feature deploy останавливается до rollback или remediation.
+- Если любой Prometheus SLO alert активен дольше 10 минут, ответственный использует `docs/runbooks/incident-response.md`.
+- Если нужен rollback, используется `docs/runbooks/rollback.md`, а в incident notes фиксируются время обнаружения, решения и восстановления.
+- Если model gate или data gate не проходят, promotion блокируется и применяется `docs/runbooks/retraining.md`.
+
+## Prometheus-алерты
+
+Реализация alert-ов находится в `observability/prometheus/prizma-rules.yml`.
+
+Текущее покрытие alert-ами:
+
+- `PrizmaHighErrorRate` соответствует SLO по доле 5xx ошибок API.
+- `PrizmaHighP95Latency` соответствует SLO по задержке создания задачи.
+- `PrizmaHighJobP95Duration` соответствует SLO по длительности обработки изображения.
+- `PrizmaHighJobFailureRate` соответствует SLO по надежности обработки.
+- `PrizmaJobsStuck` соответствует SLO по давлению на очередь.
+
+## Релизный gate
+
+Перед продвижением релиза должны пройти:
 
 - `make lint`
 - `make test`
@@ -55,4 +78,4 @@ Before promoting a release:
 - `make mlops`
 - `make kube-validate`
 
-Promotion is allowed only when all gates pass and the current production alert state is green.
+Продвижение релиза разрешено только если все gates зеленые и в production нет активных SLO-alerts.
